@@ -101,6 +101,9 @@
   "review.invalid": "Avaliação inválida.",
 
   "push.enable": "Ativar notificações",
+  "push.match.title": "Novo match no otto",
+  "push.match.body": "Há uma proposta para sua publicação. Veja antes que se perca.",
+  "push.match.fallback": "Há um novo match para sua publicação.",
 
   "moderation.pending": "Em revisão",
   "moderation.rejected": "Rejeitada",

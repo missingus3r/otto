@@ -101,6 +101,9 @@
   "review.invalid": "Invalid review.",
 
   "push.enable": "Enable notifications",
+  "push.match.title": "New match on otto",
+  "push.match.body": "There's a proposal for your listing. Take a look before it expires.",
+  "push.match.fallback": "There's a new match for your listing.",
 
   "moderation.pending": "Under review",
   "moderation.rejected": "Rejected",

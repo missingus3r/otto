@@ -8,6 +8,8 @@ import LedgerEntry from '../models/LedgerEntry.js';
 import { matchListings } from './llm.js';
 import { getMarketBaseline } from './priceScraper.js';
 import { notifyUser } from './push.js';
+import { tForLang } from './i18n.js';
+import User from '../models/User.js';
 
 const BATCH_SIZE = 30;
 const PRICE_SCRAPE_ENABLED = process.env.PRICE_SCRAPE_ENABLED === 'true';
@@ -145,21 +147,26 @@ export async function runOnce() {
             },
           });
 
-          // Push notify both owners. Wrapped in try/catch — agent must NOT
-          // crash if push fails for any reason.
+          // Push notify both owners in their own language. Wrapped in
+          // try/catch — agent must NOT crash if push fails for any reason.
           try {
-            const shortRationale =
-              (created.agentRationale || '').slice(0, 140) || 'Hay un nuevo match para tu publicación.';
-            const payload = {
-              title: 'Nuevo match en otto',
-              body: shortRationale,
+            const shortRationale = (created.agentRationale || '').slice(0, 140);
+            const buildPayload = (lang) => ({
+              title: tForLang(lang, 'push.match.title'),
+              body: shortRationale || tForLang(lang, 'push.match.fallback'),
               url: '/matches',
-            };
+            });
+            const [userA, userB] = await Promise.all([
+              User.findById(a.userId).select('lang').lean(),
+              User.findById(b.userId).select('lang').lean(),
+            ]);
+            const langA = (userA && userA.lang) || process.env.DEFAULT_LANG || 'es';
+            const langB = (userB && userB.lang) || process.env.DEFAULT_LANG || 'es';
             await Promise.all([
-              notifyUser(a.userId, payload).catch((e) =>
+              notifyUser(a.userId, buildPayload(langA)).catch((e) =>
                 console.error('[push] notify A failed:', e.message)
               ),
-              notifyUser(b.userId, payload).catch((e) =>
+              notifyUser(b.userId, buildPayload(langB)).catch((e) =>
                 console.error('[push] notify B failed:', e.message)
               ),
             ]);
