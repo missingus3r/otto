@@ -100,7 +100,7 @@ async function start() {
     // sessions backed by mongo
     app.use(
       session({
-        secret: process.env.SESSION_SECRET || 'dealr-dev-secret',
+        secret: process.env.SESSION_SECRET || 'otto-dev-secret',
         resave: false,
         saveUninitialized: false,
         store: MongoStore.create({
@@ -163,7 +163,7 @@ async function start() {
 
     const port = process.env.PORT || 3000;
     app.listen(port, () => {
-      console.log(`[dealr] listening on http://localhost:${port}`);
+      console.log(`[otto] listening on http://localhost:${port}`);
     });
   } catch (err) {
     console.error('[fatal] startup failed:', err);

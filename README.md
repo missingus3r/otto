@@ -1,4 +1,4 @@
-# dealr
+# otto
 
 Agent-mediated marketplace. Users list items with a price range (or item-for-item swap). A **single background LLM** scans every open listing, looks up market prices, and proposes deals to users. Nothing closes without an explicit one-tap human approval.
 
@@ -9,7 +9,7 @@ Inspired by Anthropic's [Project Deal](https://www.anthropic.com/features/projec
 1. Agent-mediated commerce *works* — 186 deals in a week between 69 employees.
 2. **Stronger LLMs got better deals while weaker-LLM users never noticed.**
 
-The asymmetry from #2 is fatal in a public marketplace. So **dealr inverts the architecture**: instead of every user running their own agent, the platform runs **one** model for everybody. No premium tier, no skill gap, equal terms. The user keeps full veto power on every proposed deal.
+The asymmetry from #2 is fatal in a public marketplace. So **otto inverts the architecture**: instead of every user running their own agent, the platform runs **one** model for everybody. No premium tier, no skill gap, equal terms. The user keeps full veto power on every proposed deal.
 
 ## Architecture (high level)
 
@@ -50,8 +50,8 @@ The asymmetry from #2 is fatal in a public marketplace. So **dealr inverts the a
 ## Running locally
 
 ```bash
-git clone https://github.com/missingus3r/dealr.git
-cd dealr
+git clone https://github.com/missingus3r/otto.git
+cd otto
 cp .env.example .env
 # edit .env: set MONGO_URI, OPENAI_API_KEY, SESSION_SECRET
 npm install

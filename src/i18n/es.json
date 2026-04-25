@@ -1,5 +1,5 @@
 {
-  "app.name": "dealr",
+  "app.name": "otto",
   "app.tagline": "Negociá más inteligente. Dejá que el agente hable.",
 
   "landing.hero.title": "Negociá más inteligente.",
@@ -31,8 +31,8 @@
   "auth.login": "Entrar",
   "auth.register": "Crear cuenta",
   "auth.displayName": "Nombre visible",
-  "auth.loginTitle": "Entrar a dealr",
-  "auth.registerTitle": "Crear cuenta en dealr",
+  "auth.loginTitle": "Entrar a otto",
+  "auth.registerTitle": "Crear cuenta en otto",
   "auth.noAccount": "¿No tenés cuenta?",
   "auth.haveAccount": "¿Ya tenés cuenta?",
   "auth.invalid": "Credenciales inválidas.",

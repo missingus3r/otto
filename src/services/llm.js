@@ -11,7 +11,7 @@ function getClient() {
   return _client;
 }
 
-const SYSTEM_PROMPT = `You are the matching agent for dealr, an agent-mediated marketplace.
+const SYSTEM_PROMPT = `You are the matching agent for otto, an agent-mediated marketplace.
 
 Listings can be of three types:
 - "sell": user wants to sell an item; priceMin/priceMax is the price range they accept.

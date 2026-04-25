@@ -1,5 +1,5 @@
 {
-  "app.name": "dealr",
+  "app.name": "otto",
   "app.tagline": "Trade smarter. Let the agent talk.",
 
   "landing.hero.title": "Trade smarter.",
@@ -31,8 +31,8 @@
   "auth.login": "Sign in",
   "auth.register": "Create account",
   "auth.displayName": "Display name",
-  "auth.loginTitle": "Sign in to dealr",
-  "auth.registerTitle": "Create your dealr account",
+  "auth.loginTitle": "Sign in to otto",
+  "auth.registerTitle": "Create your otto account",
   "auth.noAccount": "No account yet?",
   "auth.haveAccount": "Already have an account?",
   "auth.invalid": "Invalid credentials.",

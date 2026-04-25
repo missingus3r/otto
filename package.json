@@ -1,5 +1,5 @@
 {
-  "name": "dealr",
+  "name": "otto",
   "version": "0.1.0",
   "description": "Agent-mediated marketplace — list items, set price ranges, a single LLM matches and proposes deals. Users approve before anything closes.",
   "main": "server.js",

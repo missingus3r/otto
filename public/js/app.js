@@ -1,4 +1,4 @@
-// dealr — minimal client JS
+// otto — minimal client JS
 (function () {
   // mobile hamburger toggle
   const btn = document.getElementById('hamburger');
