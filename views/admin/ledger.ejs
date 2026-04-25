@@ -1,6 +1,7 @@
 <%- include('../partials/header', { pageTitle: t('admin.ledger') }) %>
-<%- include('../partials/nav') %>
+<%- include('../partials/nav', { activePage: 'admin' }) %>
 
+<main class="page">
 <a class="muted" href="/admin">← <%= t('common.back') %></a>
 <h1 class="section-title" style="margin-top:8px"><%= t('admin.ledger') %></h1>
 <p class="muted">Append-only audit trail.</p>
@@ -28,5 +29,6 @@
   </table>
 </div>
 <%- include('../partials/pager') %>
+</main>
 
 <%- include('../partials/footer') %>

@@ -1,4 +1,13 @@
-<%- include('partials/header', { pageTitle: t('auth.registerTitle') }) %>
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>otto · registro</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@300;400;500&family=Inter:wght@300;400;500;600&family=Bodoni+Moda:ital,wght@0,400;0,700;0,900;1,400;1,700;1,900&display=swap" rel="stylesheet" />
+<link rel="stylesheet" href="_shared.css" />
 <style>
   body { overflow: hidden; height: 100vh; }
   .auth-wrap {
@@ -97,12 +106,14 @@
     .auth-form { padding: 48px 28px; }
   }
 </style>
+</head>
+<body>
 
 <div class="auth-wrap">
   <aside class="auth-visual">
-    <a class="auth-brand" href="/">otto</a>
+    <a class="auth-brand" href="../Otto Noir Landing.html">otto</a>
     <div class="auth-quote">
-      Cancha pareja por <span class="red">diseño.</span><br>
+      Cancha pareja por <span class="red">diseño.</span><br/>
       Mismo agente, mismas reglas.
     </div>
     <div class="auth-meta">EXPEDIENTE NUEVO · v0.1 alpha</div>
@@ -110,67 +121,86 @@
 
   <main class="auth-form">
     <div class="auth-form-inner">
-      <div class="page-eyebrow"><%= t('auth.registerTitle') %></div>
+      <div class="page-eyebrow">Crear cuenta</div>
       <h1>Sumate al <em>experimento.</em></h1>
       <p class="sub">El primer marketplace público mediado por IA. Tres campos y estás dentro.</p>
 
       <div id="banner-slot"></div>
 
-      <% if (typeof error !== 'undefined' && error) { %>
-        <div class="banner">
-          <div class="banner-stamp">ERR</div>
-          <div class="banner-body">
-            <div class="banner-title"><%= t('auth.exists') %></div>
-            <div class="banner-text"><%= error %></div>
-          </div>
-        </div>
-      <% } %>
-
-      <form id="register-form" action="/auth/register" method="post" novalidate>
-        <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+      <form id="register-form" novalidate>
         <div class="field" id="f-name">
-          <label for="displayName"><%= t('auth.displayName') %> <span class="req">*</span></label>
-          <input class="input" type="text" id="displayName" name="displayName" minlength="2" maxlength="80" autocomplete="name" required>
-          <div class="field-error">mínimo 2 caracteres</div>
+          <label for="displayName">Nombre <span class="req">*</span></label>
+          <input class="input" type="text" id="displayName" name="displayName" minlength="2" maxlength="40" autocomplete="name" required />
+          <div class="field-error" data-for="displayName">mínimo 2 caracteres</div>
         </div>
         <div class="field" id="f-email">
-          <label for="email"><%= t('auth.email') %> <span class="req">*</span></label>
-          <input class="input" type="email" id="email" name="email" autocomplete="email" required>
-          <div class="field-error">formato inválido</div>
+          <label for="email">Email <span class="req">*</span></label>
+          <input class="input" type="email" id="email" name="email" autocomplete="email" required />
+          <div class="field-error" data-for="email">formato inválido</div>
         </div>
         <div class="field" id="f-password">
-          <label for="password"><%= t('auth.password') %> <span class="req">*</span></label>
-          <input class="input" type="password" id="password" name="password" minlength="6" autocomplete="new-password" required>
-          <div class="hint">mínimo 6 caracteres · se hashea con bcrypt</div>
-          <div class="field-error">debe tener al menos 6 caracteres</div>
+          <label for="password">Contraseña <span class="req">*</span></label>
+          <input class="input" type="password" id="password" name="password" minlength="8" autocomplete="new-password" required />
+          <div class="hint">mínimo 8 caracteres · se hashea con bcrypt</div>
+          <div class="field-error" data-for="password">debe tener al menos 8 caracteres</div>
         </div>
         <button class="btn" type="submit" style="width:100%; justify-content:center; padding:16px;">
-          <%= t('auth.register') %> <span class="arrow">→</span>
+          Crear cuenta y entrar <span class="arrow">→</span>
         </button>
         <p class="hint" style="margin-top:14px; text-align:center;">Rate limit: 30 / 15 min · Auto-login tras crear</p>
       </form>
 
-      <div class="alt-link"><%= t('auth.haveAccount') %> <a href="/auth/login"><%= t('auth.login') %></a></div>
+      <div class="alt-link">
+        ¿Ya tenés cuenta? <a href="login.html">Iniciá sesión</a>
+      </div>
     </div>
   </main>
 </div>
 
+<script src="_shared.js"></script>
 <script>
-  (function () {
-    var form = document.getElementById('register-form');
-    if (!form) return;
-    form.addEventListener('submit', function (e) {
-      document.querySelectorAll('.field').forEach(function (f) { f.classList.remove('error'); });
-      var name = document.getElementById('displayName').value;
-      var email = document.getElementById('email').value;
-      var pw = document.getElementById('password').value;
-      var ok = true;
-      if (!name || name.length < 2) { document.getElementById('f-name').classList.add('error'); ok = false; }
-      if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) { document.getElementById('f-email').classList.add('error'); ok = false; }
-      if (!pw || pw.length < 6) { document.getElementById('f-password').classList.add('error'); ok = false; }
-      if (!ok) e.preventDefault();
-    });
-  })();
-</script>
+  const form = document.getElementById("register-form");
+  let attempts = 0;
 
-<%- include('partials/footer') %>
+  form.addEventListener("submit", (e) => {
+    e.preventDefault();
+    document.querySelectorAll(".field").forEach(f => f.classList.remove("error"));
+
+    const data = Object.fromEntries(new FormData(form));
+    let ok = true;
+
+    if (!data.displayName || data.displayName.length < 2) { document.getElementById("f-name").classList.add("error"); ok = false; }
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(data.email)) { document.getElementById("f-email").classList.add("error"); ok = false; }
+    if (!data.password || data.password.length < 8) { document.getElementById("f-password").classList.add("error"); ok = false; }
+
+    if (!ok) return;
+
+    // simulate server checks
+    attempts++;
+    if (attempts > 3) {
+      ottoBanner({ kind: "error", stamp: "429", title: "Rate limit alcanzado", text: "Demasiados intentos. Probá de nuevo en <code>15 min</code>. (mock)" });
+      return;
+    }
+    if (data.email === "duplicado@otto.market") {
+      ottoBanner({ kind: "error", stamp: "409", title: "Email ya registrado", text: "Ya existe una cuenta con <code>" + data.email + "</code>. ¿Querés <a href='login.html' style='color:var(--paper);border-bottom:1px solid var(--blood)'>iniciar sesión</a>?" });
+      return;
+    }
+
+    // success → autologin → redirect
+    ottoSetUser({
+      id: "u_" + Math.floor(Math.random() * 9000 + 1000),
+      displayName: data.displayName,
+      email: data.email,
+      role: "user",
+      region: "—",
+      joined: new Date().toISOString().slice(0,10),
+      lastLoginAt: new Date().toISOString().slice(0,16).replace("T", " "),
+      reputation: { score: 0, deals: 0 },
+      lang: "es",
+    });
+    sessionStorage.setItem("flash", JSON.stringify({ kind:"success", stamp:"WELCOME", title: "Cuenta creada", text: "Bienvenide " + data.displayName + ". Tu primer publicación arranca el reloj del agente." }));
+    location.href = "listings.html";
+  });
+</script>
+</body>
+</html>

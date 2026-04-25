@@ -1,28 +1,116 @@
 <%- include('partials/header', { pageTitle: t('auth.loginTitle') }) %>
-<%- include('partials/flash') %>
+<style>
+  body { overflow: hidden; height: 100vh; }
+  .auth-wrap { display: grid; grid-template-columns: 1.05fr 1fr; height: 100vh; }
+  .auth-visual {
+    position: relative;
+    background:
+      linear-gradient(180deg, rgba(10,9,8,0.5) 0%, rgba(10,9,8,0.95) 100%),
+      url("https://images.unsplash.com/photo-1532009324734-20a7a5813719?w=1400&q=70&auto=format") center/cover no-repeat;
+    padding: 48px;
+    display: flex; flex-direction: column; justify-content: space-between;
+  }
+  .auth-brand { font-family: 'Bodoni Moda', serif; font-style: italic; font-size: 32px; color: var(--paper); text-decoration: none; }
+  .auth-quote {
+    font-family: 'Bodoni Moda', serif; font-style: italic; font-weight: 400;
+    font-size: clamp(36px, 4vw, 56px); line-height: 1.05;
+    letter-spacing: -0.02em; max-width: 540px;
+  }
+  .auth-quote .red { color: var(--blood); }
+  .auth-meta { font-family: 'DM Mono', monospace; font-size: 10px; letter-spacing: 0.22em; text-transform: uppercase; color: var(--ash); }
+  .auth-meta::before { content: ""; display: inline-block; width: 28px; height: 1px; background: var(--smoke); vertical-align: middle; margin-right: 12px; }
+  .auth-form { padding: 64px 56px; display: flex; flex-direction: column; justify-content: center; overflow-y: auto; }
+  .auth-form-inner { max-width: 420px; width: 100%; margin: 0 auto; }
+  .auth-form h1 { font-family: 'Bodoni Moda', serif; font-weight: 400; font-size: 44px; line-height: 1; letter-spacing: -0.025em; margin-bottom: 14px; }
+  .auth-form h1 em { font-style: italic; color: var(--blood); }
+  .auth-form .sub { color: var(--ash); margin-bottom: 36px; font-size: 14px; }
+  .alt-link { margin-top: 24px; text-align: center; color: var(--ash); font-family: 'DM Mono', monospace; font-size: 11px; letter-spacing: 0.12em; text-transform: uppercase; }
+  .alt-link a { color: var(--paper); border-bottom: 1px solid var(--blood); text-decoration: none; padding-bottom: 1px; }
+  @media (max-width: 900px) {
+    body { overflow: auto; height: auto; }
+    .auth-wrap { grid-template-columns: 1fr; height: auto; }
+    .auth-visual { min-height: 280px; padding: 32px; }
+    .auth-form { padding: 48px 28px; }
+  }
+</style>
 
-<div class="form-card">
-  <h1><%= t('auth.loginTitle') %></h1>
-  <% if (typeof error !== 'undefined' && error) { %>
-    <div class="error-msg"><%= error %></div>
-  <% } %>
-  <form action="/auth/login" method="post">
-    <input type="hidden" name="_csrf" value="<%= csrfToken %>">
-    <label for="email"><%= t('auth.email') %></label>
-    <input id="email" type="email" name="email" required autocomplete="email">
-    <label for="password"><%= t('auth.password') %></label>
-    <input id="password" type="password" name="password" required autocomplete="current-password">
-    <div class="spacer"></div>
-    <button class="btn block" type="submit"><%= t('auth.login') %></button>
-  </form>
-  <div class="spacer"></div>
-  <div class="center muted">
-    <a href="/auth/forgot"><%= t('auth.forgot') %></a>
-  </div>
-  <div class="spacer"></div>
-  <div class="center muted">
-    <%= t('auth.noAccount') %> <a href="/auth/register"><%= t('auth.register') %></a>
-  </div>
+<div class="auth-wrap">
+  <aside class="auth-visual">
+    <a class="auth-brand" href="/">otto</a>
+    <div class="auth-quote">
+      El agente no <span class="red">duerme.</span><br>
+      Volvé al expediente.
+    </div>
+    <div class="auth-meta">EXPEDIENTE EXISTENTE</div>
+  </aside>
+
+  <main class="auth-form">
+    <div class="auth-form-inner">
+      <div class="page-eyebrow"><%= t('auth.loginTitle') %></div>
+      <h1>Reanudá la <em>negociación.</em></h1>
+      <p class="sub">Tus matches siguen ahí. El agente no descansa.</p>
+
+      <div id="banner-slot"></div>
+
+      <% if (typeof error !== 'undefined' && error) { %>
+        <div class="banner">
+          <div class="banner-stamp">ERR</div>
+          <div class="banner-body">
+            <div class="banner-title"><%= t('auth.invalid') %></div>
+            <div class="banner-text"><%= error %></div>
+          </div>
+        </div>
+      <% } %>
+
+      <form id="login-form" action="/auth/login" method="post" novalidate>
+        <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+        <div class="field" id="f-email">
+          <label for="email"><%= t('auth.email') %></label>
+          <input class="input" type="email" id="email" name="email" autocomplete="email" required>
+          <div class="field-error">formato inválido</div>
+        </div>
+        <div class="field" id="f-password">
+          <label for="password"><%= t('auth.password') %></label>
+          <input class="input" type="password" id="password" name="password" autocomplete="current-password" required>
+          <div class="field-error">requerido</div>
+        </div>
+        <button class="btn" type="submit" style="width:100%; justify-content:center; padding:16px;">
+          <%= t('auth.login') %> <span class="arrow">→</span>
+        </button>
+        <p class="hint" style="margin-top:14px; text-align:center;">
+          Rate limit: 30 / 15 min · Mensaje genérico para credenciales inválidas (mitiga email enumeration)
+        </p>
+      </form>
+
+      <div class="alt-link" style="margin-top:18px;">
+        <a href="/auth/forgot"><%= t('auth.forgot') %></a>
+      </div>
+      <div class="alt-link"><%= t('auth.noAccount') %> <a href="/auth/register"><%= t('auth.register') %></a></div>
+    </div>
+  </main>
 </div>
+
+<script>
+  (function () {
+    var form = document.getElementById('login-form');
+    if (!form) return;
+    form.addEventListener('submit', function (e) {
+      // client-side validation only — server handles auth
+      document.querySelectorAll('.field').forEach(function (f) { f.classList.remove('error'); });
+      var email = document.getElementById('email').value;
+      var pw = document.getElementById('password').value;
+      var ok = true;
+      if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+        document.getElementById('f-email').classList.add('error');
+        ok = false;
+      }
+      if (!pw) {
+        document.getElementById('f-password').classList.add('error');
+        ok = false;
+      }
+      if (!ok) e.preventDefault();
+    });
+  })();
+</script>
 
 <%- include('partials/footer') %>

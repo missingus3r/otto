@@ -1,8 +1,31 @@
 <%- include('../partials/header', { pageTitle: listing.title }) %>
-<%- include('../partials/nav', { activeNav: 'listings' }) %>
-<%- include('../partials/flash') %>
+<%- include('../partials/nav', { activePage: 'listings' }) %>
 
-<a class="muted" href="/listings">← <%= t('common.back') %></a>
+<style>
+  .detail-grid { display: grid; grid-template-columns: 1.3fr 1fr; gap: 48px; }
+  .photo-big { aspect-ratio: 4/3; background: var(--ink-3) center/cover no-repeat; border: 1px solid var(--line); position: relative; }
+  .photo-big .stamp { position:absolute; top: 18px; right: 18px; }
+  .detail-title { font-family:'Bodoni Moda',serif; font-style: italic; font-weight: 400; font-size: clamp(34px, 4vw, 52px); letter-spacing: -0.02em; line-height: 1.05; margin-bottom: 14px; }
+  .detail-desc { color: var(--paper-2); font-size: 15px; line-height: 1.65; margin: 24px 0; max-width: 560px; white-space: pre-wrap; }
+  .detail-actions { display: flex; gap: 12px; margin-top: 28px; flex-wrap: wrap; }
+  .matches-mini { margin-top: 48px; }
+  .matches-mini h3 { font-family: 'Bodoni Moda', serif; font-style: italic; font-weight: 400; font-size: 26px; margin-bottom: 18px; letter-spacing: -0.01em; }
+  .match-row {
+    display: grid; grid-template-columns: 80px 1fr auto auto; gap: 18px; align-items: center;
+    padding: 16px 18px; border: 1px solid var(--line); margin-bottom: 10px; text-decoration: none; color: var(--paper);
+    transition: all .2s;
+  }
+  .match-row:hover { border-color: var(--blood); }
+  .match-score { font-family:'Bodoni Moda',serif; font-style: italic; font-size: 28px; color: var(--blood); }
+  .match-meta { font-family: 'DM Mono', monospace; font-size: 11px; color: var(--ash); }
+  .match-name { font-family: 'Bodoni Moda', serif; font-style: italic; font-size: 18px; }
+  .rep-block { background: var(--ink-2); border:1px solid var(--line); padding: 18px 20px; margin-top: 24px; }
+  .rep-stars { color: var(--amber); font-size: 16px; letter-spacing: 2px; }
+  .gallery-strip { display:flex; gap:6px; margin-top:8px; flex-wrap:wrap; }
+  .gallery-strip img { width: 64px; height: 64px; object-fit: cover; border: 1px solid var(--line-2); cursor: pointer; opacity: 0.6; transition: opacity .2s, border-color .2s; }
+  .gallery-strip img.active, .gallery-strip img:hover { opacity: 1; border-color: var(--amber); }
+  @media (max-width:900px){ .detail-grid { grid-template-columns: 1fr; } }
+</style>
 
 <%
   var photos = (listing.photos && listing.photos.length) ? listing.photos : [];
@@ -13,114 +36,179 @@
   var coverFull = photos.length ? (photos[0].path || photos[0].thumbPath) : '';
   var ownerId = listing.userId && (listing.userId._id || listing.userId);
   var iAmOwner = currentUser && String(currentUser._id) === String(ownerId);
+  var ownerDisplay = listing.userId && listing.userId.displayName ? listing.userId.displayName : '';
+  function kindLabel(t) {
+    if (t === 'sell') return 'VENDO';
+    if (t === 'buy') return 'BUSCO';
+    if (t === 'swap') return 'TRUEQUE';
+    return (t || '').toUpperCase();
+  }
 %>
 
-<div class="card">
-  <% if (coverImg) { %>
-    <img data-gallery-main src="<%= coverFull %>" alt="<%= listing.title %>" style="border-radius:0;margin-bottom:12px;max-height:380px;object-fit:cover;width:100%;">
-    <% if (photos.length > 1) { %>
-      <div class="gallery-thumbs">
-        <% photos.forEach(function(p, i) { %>
-          <img data-gallery-thumb data-full="<%= p.path %>" src="<%= p.thumbPath || p.path %>" class="<%= i === 0 ? 'active' : '' %>" alt="">
-        <% }); %>
-      </div>
-    <% } %>
-  <% } %>
-  <div class="row between">
-    <h1 style="margin:0;font-size:1.4rem;"><%= listing.title %></h1>
-    <span class="pill <%= listing.status %>"><%= t('listings.status.' + listing.status) %></span>
-  </div>
-  <div class="muted" style="margin-top:6px;">
-    <span class="pill <%= listing.type %>"><%= t('listings.type.' + listing.type) %></span>
-    <% if (listing.category) { %><span class="pill"><%= t('category.' + listing.category) %></span><% } %>
-    <% if (listing.type !== 'swap') { %>
-      · <%= formatPriceRange(listing.priceMin, listing.priceMax, listing.currency) %>
-    <% } %>
-    <% if (listing.userId && listing.userId.displayName) { %>
-      · <%= listing.userId.displayName %>
-    <% } %>
-    <% if (listing.city) { %> · <%= listing.city %><% } %>
-    <% if (typeof sellerReputation !== 'undefined' && sellerReputation && sellerReputation.count > 0) { %>
-      · <span class="pill" title="<%= sellerReputation.count %> <%= t('review.left') %>">★ <%= sellerReputation.avgRating.toFixed(1) %> (<%= sellerReputation.count %>)</span>
-    <% } %>
+<main class="page">
+  <%- include('../partials/flash') %>
+  <div id="banner-slot"></div>
+
+  <div class="page-eyebrow" style="margin-bottom:32px;">
+    <a href="/listings" style="color:var(--ash);text-decoration:none;">← <%= t('common.back') %></a>
   </div>
 
-  <% if (listing.moderationStatus === 'pending') { %>
-    <div class="rationale" style="margin-top:10px;">
-      <strong><%= t('moderation.pending') %>.</strong>
-    </div>
-  <% } else if (listing.moderationStatus === 'rejected') { %>
-    <div class="rationale" style="margin-top:10px;">
-      <strong><%= t('moderation.rejected') %>.</strong>
-    </div>
-  <% } %>
-
-  <% if (listing.description) { %>
-    <p style="margin-top:12px;"><%= listing.description %></p>
-  <% } %>
-  <% if (listing.type === 'swap' && listing.swapForDescription) { %>
-    <div class="rationale">
-      <strong><%= t('listings.swapFor') %>:</strong> <%= listing.swapForDescription %>
-    </div>
-  <% } %>
-
-  <% if (iAmOwner && listing.status === 'open') { %>
-    <div class="btn-row" style="margin-top:12px;">
-      <a class="btn ghost" href="/listings/<%= listing._id %>/edit"><%= t('listings.editBtn') %></a>
-      <form action="/listings/<%= listing._id %>/cancel" method="post" data-confirm="<%= t('listings.cancel') %>?" style="display:inline;">
-        <input type="hidden" name="_csrf" value="<%= csrfToken %>">
-        <button class="btn danger" type="submit"><%= t('listings.cancel') %></button>
-      </form>
-    </div>
-  <% } else if (iAmOwner && listing.status === 'matched') { %>
-    <form action="/listings/<%= listing._id %>/cancel" method="post" data-confirm="<%= t('listings.cancel') %>?" style="margin-top:12px;">
-      <input type="hidden" name="_csrf" value="<%= csrfToken %>">
-      <button class="btn danger" type="submit"><%= t('listings.cancel') %></button>
-    </form>
-  <% } %>
-
-  <% if (iAmOwner && listing.moderationStatus === 'rejected' && !listing.appealAt) { %>
-    <form action="/listings/<%= listing._id %>/appeal" method="post" style="margin-top:12px;">
-      <input type="hidden" name="_csrf" value="<%= csrfToken %>">
-      <label for="appealReason"><%= t('listings.appealReason') %></label>
-      <textarea id="appealReason" name="reason" maxlength="500"></textarea>
-      <button class="btn" type="submit"><%= t('listings.appealSubmit') %></button>
-    </form>
-  <% } else if (iAmOwner && listing.appealAt) { %>
-    <div class="muted" style="margin-top:10px;font-size:0.85rem;">
-      <%= t('listings.appealSent') %>
-    </div>
-  <% } %>
-
-  <% if (currentUser && !iAmOwner && !listing.flagged) { %>
-    <form action="/listings/<%= listing._id %>/flag" method="post" data-confirm="<%= t('moderation.flag-confirm') %>" style="margin-top:12px;">
-      <input type="hidden" name="_csrf" value="<%= csrfToken %>">
-      <input type="text" name="reason" placeholder="<%= t('moderation.flag-reason') %>" maxlength="200" style="margin-bottom:6px;">
-      <button class="btn ghost" type="submit"><%= t('moderation.flag') %></button>
-    </form>
-  <% } else if (listing.flagged) { %>
-    <div class="muted" style="margin-top:10px;font-size:0.85rem;">
-      <%= t('moderation.flagged') %>
-    </div>
-  <% } %>
-</div>
-
-<h2 class="section-title"><%= t('listings.relatedMatches') %></h2>
-<% if (!matches || matches.length === 0) { %>
-  <div class="card muted"><%= t('listings.noRelatedMatches') %></div>
-<% } else { %>
-  <% matches.forEach(function(m) { %>
-    <div class="match-card">
-      <div class="match-header">
-        <span class="pill"><%= t('matches.status.' + m.status) %></span>
-        <span class="match-score"><%= m.agentScore %></span>
+  <div class="detail-grid">
+    <div>
+      <div class="photo-big" data-gallery-main-bg<% if (coverFull) { %> style="background-image:url('<%= coverFull %>')"<% } %>>
+        <% if (listing.flagged) { %><span class="stamp">FLAGGED</span><% } %>
       </div>
-      <div class="rationale">"<%= m.agentRationale %>"</div>
-      <div class="muted">
-        <%= t('matches.proposedPrice') %>: <strong><%= formatPrice(m.proposedPrice, m.currency) %></strong>
-      </div>
+      <% if (photos.length > 1) { %>
+        <div class="gallery-strip">
+          <% photos.forEach(function(p, i) { %>
+            <img data-gallery-thumb-bg data-full="<%= p.path %>" src="<%= p.thumbPath || p.path %>" class="<%= i === 0 ? 'active' : '' %>" alt="">
+          <% }); %>
+        </div>
+      <% } %>
     </div>
-  <% }); %>
-<% } %>
+
+    <div>
+      <div style="display:flex; gap:8px; margin-bottom:14px; flex-wrap:wrap;">
+        <span class="chip">#<%= String(listing._id).slice(-6) %></span>
+        <span class="chip <%= listing.type === 'swap' ? 'amber' : 'blood' %>"><%= kindLabel(listing.type) %></span>
+        <span class="chip"><%= (listing.status || '').toUpperCase() %></span>
+        <span class="chip <%= listing.moderationStatus === 'approved' ? 'green' : listing.moderationStatus === 'pending' ? 'amber' : 'blood' %>">
+          <%= listing.moderationStatus %>
+        </span>
+        <% if (listing.flagged) { %><span class="chip blood">flagged</span><% } %>
+      </div>
+
+      <h1 class="detail-title"><%= listing.title %></h1>
+      <div class="page-eyebrow" style="margin-bottom:0;">
+        <%= listing.city || '—' %>
+        <% if (listing.createdAt) { %> · publicado <%= new Date(listing.createdAt).toLocaleDateString() %><% } %>
+      </div>
+
+      <% if (listing.description) { %>
+        <p class="detail-desc"><%= listing.description %></p>
+      <% } %>
+
+      <% if (listing.type === 'swap' && listing.swapForDescription) { %>
+        <div class="card-mono" style="background:var(--ink-2); border:1px solid var(--line); padding:16px 20px; margin-top:16px;">
+          <div class="kv-row"><div class="k"><%= t('listings.swapFor') %></div><div class="v"><%= listing.swapForDescription %></div></div>
+        </div>
+      <% } %>
+
+      <% if (listing.type !== 'swap') { %>
+        <div class="card-mono" style="background:var(--ink-2); border:1px solid var(--line); padding:16px 20px; margin-top:16px;">
+          <div class="kv-row"><div class="k">Rango</div><div class="v amber"><%= formatPriceRange(listing.priceMin, listing.priceMax, listing.currency) %></div></div>
+          <div class="kv-row"><div class="k"><%= t('listings.priceMin') %></div><div class="v"><%= formatPrice(listing.priceMin, listing.currency) %></div></div>
+          <% if (ownerDisplay) { %>
+            <div class="kv-row"><div class="k">Owner</div><div class="v">@<%= ownerDisplay.split(' ')[0].toLowerCase() %><% if (iAmOwner) { %> (vos)<% } %></div></div>
+          <% } %>
+        </div>
+      <% } %>
+
+      <% if (typeof sellerReputation !== 'undefined' && sellerReputation && sellerReputation.count > 0) { %>
+        <div class="rep-block">
+          <div class="page-eyebrow" style="margin:0 0 8px;">
+            Reputación <% if (iAmOwner) { %>(vos)<% } %>
+          </div>
+          <div style="display:flex; align-items:center; gap:14px;">
+            <%
+              var sc = Math.round(sellerReputation.avgRating || 0);
+              if (sc < 0) sc = 0; if (sc > 5) sc = 5;
+            %>
+            <span class="rep-stars"><%= '★'.repeat(sc) %><%= '☆'.repeat(5 - sc) %></span>
+            <span class="mono" style="color:var(--paper);"><%= (sellerReputation.avgRating || 0).toFixed(1) %> / 5</span>
+            <span class="mono" style="color:var(--ash);">· <%= sellerReputation.count %> reviews</span>
+          </div>
+        </div>
+      <% } %>
+
+      <% if (listing.moderationStatus === 'pending') { %>
+        <div class="banner warn" style="margin-top:18px;">
+          <div class="banner-stamp">PENDING</div>
+          <div class="banner-body">
+            <div class="banner-title"><%= t('moderation.pending') %></div>
+          </div>
+        </div>
+      <% } else if (listing.moderationStatus === 'rejected') { %>
+        <div class="banner" style="margin-top:18px;">
+          <div class="banner-stamp">REJECTED</div>
+          <div class="banner-body">
+            <div class="banner-title"><%= t('moderation.rejected') %></div>
+          </div>
+        </div>
+      <% } %>
+
+      <div class="detail-actions">
+        <% if (iAmOwner && listing.status === 'open') { %>
+          <a class="btn" href="/listings/<%= listing._id %>/edit"><%= t('listings.editBtn') %></a>
+          <form action="/listings/<%= listing._id %>/cancel" method="post" data-confirm="<%= t('listings.cancel') %>?" style="display:inline;">
+            <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+            <button class="btn danger" type="submit"><%= t('listings.cancel') %></button>
+          </form>
+        <% } else if (iAmOwner && listing.status === 'matched') { %>
+          <form action="/listings/<%= listing._id %>/cancel" method="post" data-confirm="<%= t('listings.cancel') %>?" style="display:inline;">
+            <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+            <button class="btn danger" type="submit"><%= t('listings.cancel') %></button>
+          </form>
+        <% } else if (currentUser && !iAmOwner && !listing.flagged) { %>
+          <!-- TODO: route to make an offer via the agent is not implemented yet -->
+          <button class="btn" type="button" disabled title="próximamente">Hacer oferta vía agente <span class="arrow">→</span></button>
+          <form action="/listings/<%= listing._id %>/flag" method="post" data-confirm="<%= t('moderation.flag-confirm') %>" style="display:inline;">
+            <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+            <input type="hidden" name="reason" value="user_flag">
+            <button class="btn ghost" type="submit"><%= t('moderation.flag') %></button>
+          </form>
+        <% } %>
+      </div>
+
+      <% if (iAmOwner && listing.moderationStatus === 'rejected' && !listing.appealAt) { %>
+        <form action="/listings/<%= listing._id %>/appeal" method="post" style="margin-top:18px;">
+          <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+          <div class="field">
+            <label for="appealReason"><%= t('listings.appealReason') %></label>
+            <textarea class="textarea" id="appealReason" name="reason" maxlength="500"></textarea>
+          </div>
+          <button class="btn" type="submit"><%= t('listings.appealSubmit') %></button>
+        </form>
+      <% } else if (iAmOwner && listing.appealAt) { %>
+        <div class="page-eyebrow" style="margin-top:18px;"><%= t('listings.appealSent') %></div>
+      <% } %>
+    </div>
+  </div>
+
+  <% if (matches && matches.length) { %>
+    <section class="matches-mini">
+      <h3><%= t('listings.relatedMatches') %></h3>
+      <% matches.forEach(function(m) { %>
+        <a class="match-row" href="/matches">
+          <div class="match-score"><%= m.agentScore || '—' %></div>
+          <div>
+            <div class="match-name"><%= t('matches.status.' + m.status) %></div>
+            <div class="match-meta">#<%= String(m._id).slice(-6) %> · <%= new Date(m.createdAt).toLocaleString() %></div>
+          </div>
+          <div class="mono" style="color:var(--amber);"><%= formatPrice(m.proposedPrice, m.currency) %></div>
+          <span class="chip <%= m.status === 'accepted_both' ? 'green' : m.status === 'rejected' ? 'blood' : 'amber' %>">
+            <%= m.status.replace('_', ' ') %>
+          </span>
+        </a>
+      <% }); %>
+    </section>
+  <% } %>
+</main>
+
+<script>
+  (function () {
+    // Photo gallery: click thumb → swap big background image.
+    var big = document.querySelector('[data-gallery-main-bg]');
+    if (!big) return;
+    document.querySelectorAll('[data-gallery-thumb-bg]').forEach(function (t) {
+      t.addEventListener('click', function () {
+        document.querySelectorAll('[data-gallery-thumb-bg]').forEach(function (x) { x.classList.remove('active'); });
+        t.classList.add('active');
+        var url = t.dataset.full || t.src;
+        big.style.backgroundImage = "url('" + url + "')";
+      });
+    });
+  })();
+</script>
 
 <%- include('../partials/footer') %>

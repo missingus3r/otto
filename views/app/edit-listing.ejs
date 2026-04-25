@@ -1,5 +1,7 @@
 <%- include('../partials/header', { pageTitle: t('listings.edit') }) %>
-<%- include('../partials/nav', { activeNav: 'listings' }) %>
+<%- include('../partials/nav', { activePage: 'listings' }) %>
+
+<main class="page">
 <%- include('../partials/flash') %>
 
 <div class="form-card">
@@ -60,5 +62,6 @@
     </div>
   </form>
 </div>
+</main>
 
 <%- include('../partials/footer') %>

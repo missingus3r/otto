@@ -1,0 +1,180 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>otto · listing</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@300;400;500&family=Inter:wght@300;400;500;600&family=Bodoni+Moda:ital,wght@0,400;0,700;0,900;1,400;1,700;1,900&display=swap" rel="stylesheet" />
+<link rel="stylesheet" href="_shared.css" />
+<style>
+  .detail-grid { display: grid; grid-template-columns: 1.3fr 1fr; gap: 48px; }
+  .photo-big { aspect-ratio: 4/3; background: var(--ink-3) center/cover no-repeat; border: 1px solid var(--line); position: relative; }
+  .photo-big .stamp { position:absolute; top: 18px; right: 18px; }
+  .detail-title { font-family:'Bodoni Moda',serif; font-style: italic; font-weight: 400; font-size: clamp(34px, 4vw, 52px); letter-spacing: -0.02em; line-height: 1.05; margin-bottom: 14px; }
+  .detail-desc { color: var(--paper-2); font-size: 15px; line-height: 1.65; margin: 24px 0; max-width: 560px; }
+  .detail-actions { display: flex; gap: 12px; margin-top: 28px; flex-wrap: wrap; }
+  .matches-mini { margin-top: 48px; }
+  .matches-mini h3 { font-family: 'Bodoni Moda', serif; font-style: italic; font-weight: 400; font-size: 26px; margin-bottom: 18px; letter-spacing: -0.01em; }
+  .match-row {
+    display: grid; grid-template-columns: 80px 1fr auto auto; gap: 18px; align-items: center;
+    padding: 16px 18px; border: 1px solid var(--line); margin-bottom: 10px; text-decoration: none; color: var(--paper);
+    transition: all .2s;
+  }
+  .match-row:hover { border-color: var(--blood); }
+  .match-score { font-family:'Bodoni Moda',serif; font-style: italic; font-size: 28px; color: var(--blood); }
+  .match-meta { font-family: 'DM Mono', monospace; font-size: 11px; color: var(--ash); }
+  .match-name { font-family: 'Bodoni Moda', serif; font-style: italic; font-size: 18px; }
+  .rep-block { background: var(--ink-2); border:1px solid var(--line); padding: 18px 20px; margin-top: 24px; }
+  .rep-stars { color: var(--amber); font-size: 16px; letter-spacing: 2px; }
+  @media (max-width:900px){ .detail-grid { grid-template-columns: 1fr; } }
+</style>
+</head>
+<body>
+
+<div id="nav-slot"></div>
+
+<main class="page">
+  <div id="banner-slot"></div>
+
+  <div class="page-eyebrow" style="margin-bottom:32px;"><a href="listings.html" style="color:var(--ash);text-decoration:none;">← Listings</a></div>
+
+  <div class="detail-grid" id="detail"></div>
+
+  <section class="matches-mini" id="matches-mini" style="display:none;">
+    <h3>Matches relacionados</h3>
+    <div id="matches-list"></div>
+  </section>
+</main>
+
+<!-- EDIT MODAL -->
+<div class="modal-backdrop" id="edit-modal">
+  <div class="modal">
+    <div class="modal-head">
+      <div>
+        <div class="modal-eyebrow">— Editar expediente —</div>
+        <div class="modal-title">Modificar listing</div>
+      </div>
+      <button class="modal-close" onclick="ottoCloseModal('edit-modal')">×</button>
+    </div>
+    <div class="modal-body">
+      <form id="edit-form">
+        <div class="field">
+          <label>Título</label>
+          <input class="input" name="title" id="e-title" />
+        </div>
+        <div class="field">
+          <label>Descripción</label>
+          <textarea class="textarea" name="desc" id="e-desc"></textarea>
+        </div>
+        <div class="input-row">
+          <div class="field"><label>Piso</label><input class="input" type="number" name="min" id="e-min" /></div>
+          <div class="field"><label>Techo</label><input class="input" type="number" name="max" id="e-max" /></div>
+        </div>
+        <div class="hint" style="margin-top:8px;">Editar dispara <code>moderation: pending</code> si cambia título o descripción.</div>
+      </form>
+    </div>
+    <div class="modal-foot">
+      <button class="btn ghost" type="button" onclick="ottoCloseModal('edit-modal')">Cancelar</button>
+      <button class="btn" type="button" id="save-edit">Guardar cambios</button>
+    </div>
+  </div>
+</div>
+
+<script src="_shared.js"></script>
+<script>
+  ottoMountNav("listings");
+  const params = new URLSearchParams(location.search);
+  const id = params.get("id") || "L-001";
+  const l = OTTO_LISTINGS.find(x => x.id === id) || OTTO_LISTINGS[0];
+  const me = ottoUser();
+  const isOwner = l.owner === me.id;
+
+  // mock reputation lookup
+  const rep = isOwner ? me.reputation : { score: (3.8 + Math.random() * 1.1).toFixed(1), deals: Math.floor(2 + Math.random() * 18) };
+
+  document.getElementById("detail").innerHTML = `
+    <div>
+      <div class="photo-big" style="background-image:url('${l.photo}')">
+        ${l.moderation === "flagged" ? `<span class="stamp">FLAGGED</span>` : ""}
+      </div>
+    </div>
+    <div>
+      <div style="display:flex; gap:8px; margin-bottom:14px; flex-wrap:wrap;">
+        <span class="chip">${l.id}</span>
+        <span class="chip ${l.kind === "trade" ? "amber" : "blood"}">${l.kind === "sell" ? "VENDO" : l.kind === "buy" ? "BUSCO" : "TRUEQUE"}</span>
+        <span class="chip">${l.status.toUpperCase()}</span>
+        <span class="chip ${l.moderation === "approved" ? "green" : l.moderation === "pending" ? "amber" : "blood"}">${l.moderation}</span>
+      </div>
+      <h1 class="detail-title">${escapeHtml(l.title)}</h1>
+      <div class="page-eyebrow" style="margin-bottom:0;">${l.region} · publicado ${l.createdAt} · ${l.views} vistas</div>
+      <p class="detail-desc">${escapeHtml(l.desc)}</p>
+
+      <div class="card-mono" style="background:var(--ink-2); border:1px solid var(--line); padding:16px 20px;">
+        <div class="kv-row"><div class="k">Rango</div><div class="v amber">${fmt(l.rangeMin, l.currency)} — ${fmt(l.rangeMax, l.currency)}</div></div>
+        <div class="kv-row"><div class="k">Piso</div><div class="v">${fmt(l.rangeMin, l.currency)} (no negociable)</div></div>
+        <div class="kv-row"><div class="k">Owner</div><div class="v">@${l.ownerName.split(" ")[0].toLowerCase()}${isOwner ? " (vos)" : ""}</div></div>
+      </div>
+
+      <div class="rep-block">
+        <div class="page-eyebrow" style="margin:0 0 8px;">Reputación del ${isOwner ? "vendedor (vos)" : "vendedor"}</div>
+        <div style="display:flex; align-items:center; gap:14px;">
+          <span class="rep-stars">${"★".repeat(Math.round(rep.score))}${"☆".repeat(5-Math.round(rep.score))}</span>
+          <span class="mono" style="color:var(--paper);">${rep.score} / 5</span>
+          <span class="mono" style="color:var(--ash);">· ${rep.deals} trades</span>
+        </div>
+      </div>
+
+      <div class="detail-actions">
+        ${isOwner
+          ? `<button class="btn" id="edit-btn">Editar</button>
+             <button class="btn danger" id="cancel-btn">Cancelar listing</button>`
+          : `<button class="btn">Hacer oferta vía agente <span class="arrow">→</span></button>
+             <button class="btn ghost" id="flag-btn">Reportar</button>`}
+      </div>
+    </div>
+  `;
+
+  // matches mini (only owner sees them)
+  if (isOwner) {
+    const matches = OTTO_MATCHES.filter(m => m.listingId === l.id);
+    if (matches.length) {
+      document.getElementById("matches-mini").style.display = "block";
+      document.getElementById("matches-list").innerHTML = matches.map(m => `
+        <a class="match-row" href="matches.html#${m.id}">
+          <div class="match-score">${m.score}%</div>
+          <div>
+            <div class="match-name">${escapeHtml(m.counterparty)}</div>
+            <div class="match-meta">${m.id} · ${m.proposedAt}</div>
+          </div>
+          <div class="mono" style="color:var(--amber);">${fmt(m.proposedPrice, m.currency)}</div>
+          <span class="chip ${m.status === "accepted_both" ? "green" : m.status === "rejected" ? "blood" : "amber"}">${m.status.replace("_"," ")}</span>
+        </a>`).join("");
+    }
+  }
+
+  // wire edit / cancel / flag
+  document.getElementById("edit-btn")?.addEventListener("click", () => {
+    document.getElementById("e-title").value = l.title;
+    document.getElementById("e-desc").value = l.desc;
+    document.getElementById("e-min").value = l.rangeMin;
+    document.getElementById("e-max").value = l.rangeMax;
+    ottoOpenModal("edit-modal");
+  });
+  document.getElementById("save-edit")?.addEventListener("click", () => {
+    ottoCloseModal("edit-modal");
+    sessionStorage.setItem("flash", JSON.stringify({ kind:"warn", stamp:"PENDING", title:"Cambios guardados", text:"Editaste el título o la descripción → vuelve a moderación <code>pending</code>." }));
+    location.reload();
+  });
+  document.getElementById("cancel-btn")?.addEventListener("click", () => {
+    if (confirm("¿Cancelar este listing? Los matches abiertos quedarán cerrados.")) {
+      sessionStorage.setItem("flash", JSON.stringify({ kind:"error", stamp:"CLOSED", title:"Listing cancelado", text:"El expediente queda en <code>status: closed</code>. No recibe más matches." }));
+      location.href = "listings.html";
+    }
+  });
+  document.getElementById("flag-btn")?.addEventListener("click", () => {
+    ottoBanner({ kind:"warn", stamp:"FLAGGED", title:"Reportado", text:"El expediente queda en cola de moderación. Gracias por avisar." });
+    document.getElementById("flag-btn").disabled = true;
+  });
+</script>
+</body>
+</html>

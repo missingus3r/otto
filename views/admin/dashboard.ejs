@@ -1,5 +1,7 @@
 <%- include('../partials/header', { pageTitle: t('admin.title') }) %>
-<%- include('../partials/nav') %>
+<%- include('../partials/nav', { activePage: 'admin' }) %>
+
+<main class="page">
 <%- include('../partials/flash') %>
 
 <h1 class="section-title" style="margin-top:8px"><%= t('admin.title') %></h1>
@@ -83,5 +85,6 @@
     <a class="btn ghost" href="/admin/actions"><%= t('admin.actions') %></a>
   </div>
 </div>
+</main>
 
 <%- include('../partials/footer') %>

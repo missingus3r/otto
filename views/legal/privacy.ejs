@@ -3,6 +3,7 @@
 <%- include('../partials/nav') %>
 <% } %>
 
+<main class="page">
 <a class="muted" href="<%= currentUser ? '/listings' : '/' %>">← <%= t('common.back') %></a>
 
 <h1 class="section-title" style="margin-top:8px"><%= t('legal.privacy.title') %></h1>
@@ -39,5 +40,6 @@
   <h3>6. Contacto</h3>
   <p>Para ejercer derechos sobre tus datos (acceso, rectificación, eliminación), escribinos al admin del sitio.</p>
 </div>
+</main>
 
 <%- include('../partials/footer') %>

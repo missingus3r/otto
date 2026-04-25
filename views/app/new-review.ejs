@@ -1,5 +1,7 @@
 <%- include('../partials/header', { pageTitle: t('review.title') }) %>
-<%- include('../partials/nav', { activeNav: 'matches' }) %>
+<%- include('../partials/nav', { activePage: 'matches' }) %>
+
+<main class="page">
 <%- include('../partials/flash') %>
 
 <div class="form-card">
@@ -30,5 +32,6 @@
     <button class="btn block" type="submit"><%= t('review.submit') %></button>
   </form>
 </div>
+</main>
 
 <%- include('../partials/footer') %>

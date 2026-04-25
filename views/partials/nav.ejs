@@ -1,47 +1,62 @@
-<% if (currentUser) { %>
-<nav class="topnav">
-  <a href="/listings" class="brand"><span>otto</span></a>
-  <div class="topnav-links">
-    <a href="/listings"><%= t('nav.listings') %></a>
-    <a href="/listings/new"><%= t('nav.new') %></a>
-    <a href="/matches"><%= t('nav.matches') %></a>
-    <a href="/profile"><%= t('nav.profile') %></a>
-    <% if (currentUser.role === 'admin') { %>
-      <a href="/admin"><%= t('nav.admin') %></a>
-    <% } %>
-    <form action="/auth/logout" method="post" style="display:inline;margin:0;">
-      <input type="hidden" name="_csrf" value="<%= csrfToken %>">
-      <button class="btn ghost" type="submit" style="padding:6px 12px;min-height:0;font-size:0.9rem;"><%= t('nav.logout') %></button>
-    </form>
+<%
+  // The design's app-nav. Renders different links based on auth.
+  // `activePage` (string) is one of: listings | matches | how | profile
+  var ap = (typeof activePage !== 'undefined') ? activePage : (typeof activeNav !== 'undefined' ? activeNav : '');
+%>
+<nav class="app-nav">
+  <div class="inner">
+    <a href="<%= currentUser ? '/listings' : '/' %>" class="brand">otto</a>
+    <button class="hamburger" id="hamburger" type="button" aria-label="menu"><span></span><span></span><span></span></button>
+    <div class="nav-links" id="navLinks">
+      <% if (currentUser) { %>
+        <a href="/listings" class="<%= ap === 'listings' || ap === 'new' ? 'active' : '' %>"><%= t('nav.listings') %></a>
+        <a href="/matches" class="<%= ap === 'matches' ? 'active' : '' %>"><%= t('nav.matches') %></a>
+        <a href="/how-it-works" class="<%= ap === 'how' ? 'active' : '' %>"><%= t('nav.howItWorks') %></a>
+        <% if (currentUser.role === 'admin') { %>
+          <a href="/admin" class="<%= ap === 'admin' ? 'active' : '' %>"><%= t('nav.admin') %></a>
+        <% } %>
+      <% } else { %>
+        <a href="/how-it-works" class="<%= ap === 'how' ? 'active' : '' %>"><%= t('nav.howItWorks') %></a>
+      <% } %>
+      <div class="lang">
+        <a href="?lang=es" class="<%= lang === 'es' ? 'active' : '' %>">ES</a>
+        <a href="?lang=pt" class="<%= lang === 'pt' ? 'active' : '' %>">PT</a>
+        <a href="?lang=en" class="<%= lang === 'en' ? 'active' : '' %>">EN</a>
+      </div>
+      <% if (currentUser) { %>
+        <%
+          var dn = (currentUser.displayName || currentUser.email || '?');
+          var first = String(dn).split(' ')[0];
+          var initial = String(dn).trim().charAt(0).toUpperCase() || '?';
+          var role = (currentUser.role || 'user').toString().toUpperCase();
+        %>
+        <a href="/profile" class="user-chip <%= ap === 'profile' ? 'active' : '' %>">
+          <span class="av"><%= initial %></span>
+          <span><span class="name"><%= first %></span><br><span class="role"><%= role %></span></span>
+        </a>
+        <form action="/auth/logout" method="post" style="display:inline;margin:0;">
+          <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+          <button class="btn ghost sm" type="submit"><%= t('nav.logout') %></button>
+        </form>
+      <% } else { %>
+        <a href="/auth/login" class="btn ghost sm"><%= t('auth.login') %></a>
+        <a href="/auth/register" class="btn sm"><%= t('auth.register') %></a>
+      <% } %>
+    </div>
   </div>
-  <button id="hamburger" class="hamburger" aria-label="menu">≡</button>
 </nav>
 
 <% if (currentUser && !currentUser.emailVerified) { %>
-<div class="flash" style="border-color: var(--blood); margin: 12px 0;">
-  <%= t('verify.banner', { email: currentUser.email }) %>
-  <form action="/auth/verify/resend" method="post" style="display:inline;margin-left:8px;">
-    <input type="hidden" name="_csrf" value="<%= csrfToken %>">
-    <button class="btn ghost" type="submit" style="padding:4px 10px;min-height:0;font-size:0.8rem;"><%= t('verify.resend') %></button>
-  </form>
-</div>
-<% } %>
-
-<div id="mobileMenu" class="mobile-menu">
-  <a href="/listings"><%= t('nav.listings') %></a>
-  <a href="/listings/new"><%= t('nav.new') %></a>
-  <a href="/matches"><%= t('nav.matches') %></a>
-  <a href="/profile"><%= t('nav.profile') %></a>
-  <% if (currentUser.role === 'admin') { %>
-    <a href="/admin"><%= t('nav.admin') %></a>
-  <% } %>
-  <a href="/how-it-works"><%= t('nav.howItWorks') %></a>
-  <form action="/auth/logout" method="post"><input type="hidden" name="_csrf" value="<%= csrfToken %>"><button type="submit"><%= t('nav.logout') %></button></form>
-</div>
-<nav class="bottomnav">
-  <a href="/listings"<%= (typeof activeNav !== 'undefined' && activeNav === 'listings') ? ' class="active"' : '' %>><span>•</span><%= t('nav.listings') %></a>
-  <a href="/listings/new"<%= (typeof activeNav !== 'undefined' && activeNav === 'new') ? ' class="active"' : '' %>><span>+</span><%= t('nav.new') %></a>
-  <a href="/matches"<%= (typeof activeNav !== 'undefined' && activeNav === 'matches') ? ' class="active"' : '' %>><span>↔</span><%= t('nav.matches') %></a>
-  <a href="/profile"<%= (typeof activeNav !== 'undefined' && activeNav === 'profile') ? ' class="active"' : '' %>><span>☺</span><%= t('nav.profile') %></a>
-</nav>
+  <div class="page" style="padding-top:24px; padding-bottom:0;">
+    <div class="banner warn">
+      <div class="banner-stamp">VERIFY</div>
+      <div class="banner-body">
+        <div class="banner-title"><%= t('verify.banner', { email: currentUser.email }) %></div>
+        <form action="/auth/verify/resend" method="post" style="margin-top:8px;">
+          <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+          <button class="btn ghost sm" type="submit"><%= t('verify.resend') %></button>
+        </form>
+      </div>
+    </div>
+  </div>
 <% } %>

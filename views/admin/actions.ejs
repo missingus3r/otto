@@ -1,6 +1,7 @@
 <%- include('../partials/header', { pageTitle: t('admin.actions') }) %>
-<%- include('../partials/nav') %>
+<%- include('../partials/nav', { activePage: 'admin' }) %>
 
+<main class="page">
 <a class="muted" href="/admin">← <%= t('common.back') %></a>
 <h1 class="section-title" style="margin-top:8px"><%= t('admin.actions') %></h1>
 
@@ -33,5 +34,6 @@
   </div>
   <%- include('../partials/pager') %>
 <% } %>
+</main>
 
 <%- include('../partials/footer') %>

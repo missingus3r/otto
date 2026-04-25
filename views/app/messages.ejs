@@ -1,5 +1,7 @@
 <%- include('../partials/header', { pageTitle: t('messages.title') }) %>
-<%- include('../partials/nav', { activeNav: 'matches' }) %>
+<%- include('../partials/nav', { activePage: 'matches' }) %>
+
+<main class="page">
 <%- include('../partials/flash') %>
 
 <a class="muted" href="/matches">← <%= t('common.back') %></a>
@@ -38,5 +40,6 @@
     </form>
   </div>
 </div>
+</main>
 
 <%- include('../partials/footer') %>

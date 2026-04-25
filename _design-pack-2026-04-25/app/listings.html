@@ -1,0 +1,178 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>otto · listings</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@300;400;500&family=Inter:wght@300;400;500;600&family=Bodoni+Moda:ital,wght@0,400;0,700;0,900;1,400;1,700;1,900&display=swap" rel="stylesheet" />
+<link rel="stylesheet" href="_shared.css" />
+<style>
+  .filters { display: flex; gap: 16px; flex-wrap: wrap; align-items: center; margin-bottom: 28px; }
+  .filters .seg { flex: 0 0 auto; }
+  .filters .input, .filters .select { max-width: 220px; padding: 10px 14px; font-size: 13px; }
+  .filters-spacer { flex: 1; }
+
+  .listings-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+    gap: 20px;
+  }
+  .listing-card {
+    background: var(--ink-2);
+    border: 1px solid var(--line);
+    overflow: hidden;
+    text-decoration: none;
+    color: var(--paper);
+    display: flex; flex-direction: column;
+    transition: all .25s;
+    position: relative;
+  }
+  .listing-card:hover { border-color: var(--line-2); transform: translateY(-3px); }
+  .listing-photo { aspect-ratio: 4/3; background: var(--ink-3) center/cover no-repeat; position: relative; }
+  .listing-photo .corner-stamp {
+    position: absolute; top: 12px; left: 12px;
+    background: var(--ink); padding: 4px 8px;
+    font-family: 'DM Mono', monospace; font-size: 9px; letter-spacing: 0.18em;
+    color: var(--ash); border: 1px solid var(--line-2);
+  }
+  .listing-photo .mod-stamp {
+    position: absolute; top: 12px; right: 12px;
+  }
+  .listing-body { padding: 20px; flex: 1; display: flex; flex-direction: column; }
+  .listing-title {
+    font-family: 'Bodoni Moda', serif; font-style: italic; font-weight: 400;
+    font-size: 21px; letter-spacing: -0.01em; line-height: 1.2;
+    margin-bottom: 8px;
+  }
+  .listing-region {
+    font-family: 'DM Mono', monospace; font-size: 10px;
+    letter-spacing: 0.14em; text-transform: uppercase; color: var(--ash);
+    margin-bottom: 14px;
+  }
+  .listing-range {
+    font-family: 'DM Mono', monospace; font-size: 13px;
+    color: var(--amber); margin-bottom: 12px;
+  }
+  .listing-meta {
+    display: flex; justify-content: space-between; align-items: center;
+    margin-top: auto;
+    padding-top: 14px; border-top: 1px dotted var(--line);
+    font-family: 'DM Mono', monospace; font-size: 10px; letter-spacing: 0.1em; color: var(--ash);
+  }
+  .listing-meta .views::before { content: "👁  "; }
+</style>
+</head>
+<body>
+
+<div id="nav-slot"></div>
+
+<main class="page">
+  <div id="banner-slot"></div>
+
+  <header class="page-header">
+    <div class="lead">
+      <div class="page-eyebrow">Expedientes</div>
+      <h1 class="page-title">Listings.</h1>
+      <p class="page-sub">Lo tuyo, lo del resto. El agente está mirando todo lo que esté en <em>open</em>.</p>
+    </div>
+    <a class="btn" href="listing-new.html">+ Nuevo listing <span class="arrow">→</span></a>
+  </header>
+
+  <div class="filters">
+    <div class="seg" id="tabs">
+      <a href="#mine" class="active" data-tab="mine">Mis listings</a>
+      <a href="#explore" data-tab="explore">Explorar</a>
+    </div>
+    <div class="filters-spacer"></div>
+    <select class="select" id="status-filter">
+      <option value="">— estado —</option>
+      <option value="open">Open</option>
+      <option value="draft">Draft</option>
+      <option value="closed">Closed</option>
+    </select>
+    <select class="select" id="mod-filter">
+      <option value="">— moderación —</option>
+      <option value="approved">Approved</option>
+      <option value="pending">Pending</option>
+      <option value="flagged">Flagged</option>
+    </select>
+    <input class="input" id="q" placeholder="buscar…" />
+  </div>
+
+  <div id="grid" class="listings-grid"></div>
+  <div id="empty" class="empty" style="display:none;">
+    <div class="glyph">∅</div>
+    <h3>Nada por acá</h3>
+    <p>El expediente está vacío. Probá quitando filtros o publicá algo nuevo.</p>
+    <a class="btn sm" href="listing-new.html">+ Publicar</a>
+  </div>
+</main>
+
+<script src="_shared.js"></script>
+<script>
+  ottoMountNav("listings");
+  // flash from previous page
+  const flash = sessionStorage.getItem("flash");
+  if (flash) { try { ottoBanner(JSON.parse(flash)); } catch{} sessionStorage.removeItem("flash"); }
+
+  const me = ottoUser();
+  const tabs = document.querySelectorAll("#tabs a");
+  let activeTab = "mine";
+
+  tabs.forEach(t => t.addEventListener("click", e => {
+    e.preventDefault();
+    tabs.forEach(x => x.classList.remove("active"));
+    t.classList.add("active");
+    activeTab = t.dataset.tab;
+    render();
+  }));
+  ["status-filter","mod-filter","q"].forEach(id => document.getElementById(id).addEventListener("input", render));
+
+  function modChip(m) {
+    if (m === "approved") return `<span class="chip green"><span class="dot"></span>approved</span>`;
+    if (m === "pending") return `<span class="chip amber"><span class="dot"></span>pending</span>`;
+    if (m === "flagged") return `<span class="chip blood"><span class="dot"></span>flagged</span>`;
+    return "";
+  }
+
+  function render() {
+    const status = document.getElementById("status-filter").value;
+    const mod = document.getElementById("mod-filter").value;
+    const q = document.getElementById("q").value.toLowerCase();
+
+    let list = OTTO_LISTINGS.filter(l => {
+      if (activeTab === "mine") { if (l.owner !== me.id) return false; }
+      else { if (l.owner === me.id) return false; if (l.moderation !== "approved") return false; }
+      if (status && l.status !== status) return false;
+      if (mod && l.moderation !== mod) return false;
+      if (q && !(l.title.toLowerCase().includes(q) || l.region.toLowerCase().includes(q))) return false;
+      return true;
+    });
+
+    const grid = document.getElementById("grid");
+    const empty = document.getElementById("empty");
+    if (!list.length) { grid.innerHTML = ""; empty.style.display = "block"; return; }
+    empty.style.display = "none";
+
+    grid.innerHTML = list.map(l => `
+      <a class="listing-card" href="listing-detail.html?id=${l.id}">
+        <div class="listing-photo" style="background-image:url('${l.photo}')">
+          <span class="corner-stamp">${l.id} · ${l.kind === "trade" ? "TRUEQUE" : l.kind === "buy" ? "BUSCO" : "VENDO"}</span>
+          ${activeTab === "mine" ? `<span class="mod-stamp">${modChip(l.moderation)}</span>` : ""}
+        </div>
+        <div class="listing-body">
+          <div class="listing-title">${escapeHtml(l.title)}</div>
+          <div class="listing-region">${l.region}</div>
+          <div class="listing-range">${fmt(l.rangeMin, l.currency)} — ${fmt(l.rangeMax, l.currency)}</div>
+          <div class="listing-meta">
+            <span>${activeTab === "mine" ? l.status.toUpperCase() : "@" + l.ownerName.split(" ")[0].toLowerCase()}</span>
+            <span class="views">${l.views}</span>
+          </div>
+        </div>
+      </a>
+    `).join("");
+  }
+  render();
+</script>
+</body>
+</html>

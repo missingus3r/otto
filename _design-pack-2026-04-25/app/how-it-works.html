@@ -1,6 +1,11 @@
-<%- include('../partials/header', { pageTitle: t('nav.howItWorks') }) %>
-<%- include('../partials/nav', { activePage: 'how' }) %>
-
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>otto · cómo funciona</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@300;400;500&family=Inter:wght@300;400;500;600&family=Bodoni+Moda:ital,wght@0,400;0,700;0,900;1,400;1,700;1,900&display=swap" rel="stylesheet" />
+<link rel="stylesheet" href="_shared.css" />
 <style>
   .three { display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; margin: 32px 0 64px; }
   .step-card { background: var(--ink-2); border: 1px solid var(--line); padding: 36px 28px; }
@@ -21,6 +26,10 @@
   .ledger pre .s { color: var(--amber); }
   @media (max-width: 900px) { .three { grid-template-columns: 1fr; } .ledger { grid-template-columns: 1fr; } }
 </style>
+</head>
+<body>
+
+<div id="nav-slot"></div>
 
 <main class="page">
   <header class="page-header">
@@ -29,26 +38,26 @@
       <h1 class="page-title">Cómo funciona <em>otto.</em></h1>
       <p class="page-sub">Tres pasos. Un solo modelo. Audit trail inmutable.</p>
     </div>
-    <a class="btn ghost" href="<%= currentUser ? '/listings' : '/' %>">← <%= currentUser ? t('nav.listings') : t('common.back') %></a>
+    <a class="btn ghost" id="back-link" href="../Otto Noir Landing.html">← Volver</a>
   </header>
 
   <section class="three">
     <article class="step-card">
       <div class="num">01</div>
-      <h3><%= t('landing.feature1.title') %></h3>
-      <p><%= t('landing.feature1.body') %></p>
+      <h3>Publicás con un rango</h3>
+      <p>Subís foto y descripción. Definís un piso (no negociable) y un techo aspiracional. Si querés trueque, lo describís.</p>
       <div class="key">i18n · how.step1</div>
     </article>
     <article class="step-card">
       <div class="num">02</div>
-      <h3><%= t('landing.feature2.title') %></h3>
-      <p><%= t('landing.feature2.body') %></p>
+      <h3>El agente recorre el mercado</h3>
+      <p>Cada 5 minutos un único modelo IA escanea publicaciones abiertas, busca compatibilidades, consulta referencias.</p>
       <div class="key">i18n · how.step2</div>
     </article>
     <article class="step-card">
       <div class="num">03</div>
-      <h3><%= t('landing.feature3.title') %></h3>
-      <p><%= t('landing.feature3.body') %></p>
+      <h3>Vos aceptás o rechazás</h3>
+      <p>Match en tu inbox con score y razonamiento. Un tap para aceptar. Nada se cierra sin tu aprobación.</p>
       <div class="key">i18n · how.step3</div>
     </article>
   </section>
@@ -63,7 +72,7 @@
   <section>
     <div class="page-eyebrow">— Sección Ledger · audit trail inmutable —</div>
     <h2 style="font-family:'Bodoni Moda',serif; font-style:italic; font-weight:400; font-size: clamp(32px, 4vw, 52px); margin: 18px 0 24px; letter-spacing:-0.025em;">
-      Cada match deja huella.<br>Append-only.
+      Cada match deja huella.<br/>Append-only.
     </h2>
 
     <div class="ledger">
@@ -95,4 +104,16 @@
   </section>
 </main>
 
-<%- include('../partials/footer') %>
+<script src="_shared.js"></script>
+<script>
+  // nav only if logged in (hide otherwise)
+  if (ottoIsLoggedIn()) {
+    ottoMountNav("how");
+    document.getElementById("back-link").href = "listings.html";
+    document.getElementById("back-link").textContent = "← Listings";
+  } else {
+    document.getElementById("nav-slot").remove();
+  }
+</script>
+</body>
+</html>

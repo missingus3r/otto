@@ -1,0 +1,148 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>otto · login</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@300;400;500&family=Inter:wght@300;400;500;600&family=Bodoni+Moda:ital,wght@0,400;0,700;0,900;1,400;1,700;1,900&display=swap" rel="stylesheet" />
+<link rel="stylesheet" href="_shared.css" />
+<style>
+  body { overflow: hidden; height: 100vh; }
+  .auth-wrap { display: grid; grid-template-columns: 1.05fr 1fr; height: 100vh; }
+  .auth-visual {
+    position: relative;
+    background:
+      linear-gradient(180deg, rgba(10,9,8,0.5) 0%, rgba(10,9,8,0.95) 100%),
+      url("https://images.unsplash.com/photo-1532009324734-20a7a5813719?w=1400&q=70&auto=format") center/cover no-repeat;
+    padding: 48px;
+    display: flex; flex-direction: column; justify-content: space-between;
+  }
+  .auth-brand { font-family: 'Bodoni Moda', serif; font-style: italic; font-size: 32px; color: var(--paper); text-decoration: none; }
+  .auth-quote {
+    font-family: 'Bodoni Moda', serif; font-style: italic; font-weight: 400;
+    font-size: clamp(36px, 4vw, 56px); line-height: 1.05;
+    letter-spacing: -0.02em; max-width: 540px;
+  }
+  .auth-quote .red { color: var(--blood); }
+  .auth-meta { font-family: 'DM Mono', monospace; font-size: 10px; letter-spacing: 0.22em; text-transform: uppercase; color: var(--ash); }
+  .auth-meta::before { content: ""; display: inline-block; width: 28px; height: 1px; background: var(--smoke); vertical-align: middle; margin-right: 12px; }
+  .auth-form { padding: 64px 56px; display: flex; flex-direction: column; justify-content: center; overflow-y: auto; }
+  .auth-form-inner { max-width: 420px; width: 100%; margin: 0 auto; }
+  .auth-form h1 { font-family: 'Bodoni Moda', serif; font-weight: 400; font-size: 44px; line-height: 1; letter-spacing: -0.025em; margin-bottom: 14px; }
+  .auth-form h1 em { font-style: italic; color: var(--blood); }
+  .auth-form .sub { color: var(--ash); margin-bottom: 36px; font-size: 14px; }
+  .alt-link { margin-top: 24px; text-align: center; color: var(--ash); font-family: 'DM Mono', monospace; font-size: 11px; letter-spacing: 0.12em; text-transform: uppercase; }
+  .alt-link a { color: var(--paper); border-bottom: 1px solid var(--blood); text-decoration: none; padding-bottom: 1px; }
+  .quick-fill { margin-top:18px; display:flex; gap:8px; flex-wrap:wrap; }
+  .quick-fill button { background:transparent; border:1px dashed var(--line-2); color:var(--ash); font-family:'DM Mono',monospace; font-size:10px; padding:6px 10px; cursor:pointer; letter-spacing:0.1em; text-transform:uppercase; }
+  .quick-fill button:hover { color:var(--paper); border-color:var(--paper); }
+  @media (max-width: 900px) {
+    body { overflow: auto; height: auto; }
+    .auth-wrap { grid-template-columns: 1fr; height: auto; }
+    .auth-visual { min-height: 280px; padding: 32px; }
+    .auth-form { padding: 48px 28px; }
+  }
+</style>
+</head>
+<body>
+
+<div class="auth-wrap">
+  <aside class="auth-visual">
+    <a class="auth-brand" href="../Otto Noir Landing.html">otto</a>
+    <div class="auth-quote">
+      El agente no <span class="red">duerme.</span><br/>
+      Volvé al expediente.
+    </div>
+    <div class="auth-meta">EXPEDIENTE EXISTENTE</div>
+  </aside>
+
+  <main class="auth-form">
+    <div class="auth-form-inner">
+      <div class="page-eyebrow">Iniciar sesión</div>
+      <h1>Reanudá la <em>negociación.</em></h1>
+      <p class="sub">Tus matches siguen ahí. El agente no descansa.</p>
+
+      <div id="banner-slot"></div>
+
+      <form id="login-form" novalidate>
+        <div class="field" id="f-email">
+          <label for="email">Email</label>
+          <input class="input" type="email" id="email" name="email" autocomplete="email" required />
+          <div class="field-error">formato inválido</div>
+        </div>
+        <div class="field" id="f-password">
+          <label for="password">Contraseña</label>
+          <input class="input" type="password" id="password" name="password" autocomplete="current-password" required />
+          <div class="field-error">requerido</div>
+        </div>
+        <button class="btn" type="submit" style="width:100%; justify-content:center; padding:16px;">
+          Entrar <span class="arrow">→</span>
+        </button>
+        <p class="hint" style="margin-top:14px; text-align:center;">Rate limit: 30 / 15 min · Mensaje genérico para cuentas baneadas o credenciales inválidas (mitiga email enumeration)</p>
+
+        <div class="quick-fill">
+          <button type="button" data-fill="user">→ login como user</button>
+          <button type="button" data-fill="admin">→ login como admin</button>
+          <button type="button" data-fill="bad">→ probar credenciales malas</button>
+          <button type="button" data-fill="banned">→ probar cuenta baneada</button>
+        </div>
+      </form>
+
+      <div class="alt-link">¿Sin cuenta aún? <a href="register.html">Creá una</a></div>
+    </div>
+  </main>
+</div>
+
+<script src="_shared.js"></script>
+<script>
+  const form = document.getElementById("login-form");
+  let attempts = 0;
+
+  document.querySelectorAll("[data-fill]").forEach(b => b.addEventListener("click", () => {
+    const m = b.dataset.fill;
+    document.getElementById("email").value = ({
+      user: "ana@otto.market", admin: "admin@otto.market",
+      bad: "ana@otto.market", banned: "banned@otto.market"
+    })[m];
+    document.getElementById("password").value = m === "bad" ? "wrong" : "correctpass";
+  }));
+
+  form.addEventListener("submit", (e) => {
+    e.preventDefault();
+    document.querySelectorAll(".field").forEach(f => f.classList.remove("error"));
+    const data = Object.fromEntries(new FormData(form));
+    let ok = true;
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(data.email)) { document.getElementById("f-email").classList.add("error"); ok = false; }
+    if (!data.password) { document.getElementById("f-password").classList.add("error"); ok = false; }
+    if (!ok) return;
+
+    attempts++;
+    if (attempts > 4) {
+      ottoBanner({ kind:"error", stamp:"429", title:"Rate limit", text:"Demasiados intentos. Esperá <code>15 min</code>. (mock)" });
+      return;
+    }
+    // generic invalid message for both bad creds + banned
+    if (data.password === "wrong" || data.email === "banned@otto.market") {
+      ottoBanner({ kind:"error", stamp:"401", title:"Credenciales inválidas", text:"Email o contraseña incorrectos. Mensaje único para no exponer si el email existe." });
+      return;
+    }
+
+    const isAdmin = data.email === "admin@otto.market";
+    ottoSetUser({
+      id: isAdmin ? "u_admin" : "u_8814",
+      displayName: isAdmin ? "Otto Admin" : "Ana Marini",
+      email: data.email,
+      role: isAdmin ? "admin" : "user",
+      region: "AR · Buenos Aires",
+      joined: "2025-09-12",
+      lastLoginAt: new Date().toISOString().slice(0,16).replace("T"," "),
+      reputation: { score: 4.8, deals: 12 },
+      lang: "es",
+    });
+    location.href = isAdmin ? "listings.html?admin=1" : "listings.html";
+  });
+</script>
+</body>
+</html>

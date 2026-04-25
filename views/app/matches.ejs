@@ -1,155 +1,319 @@
 <%- include('../partials/header', { pageTitle: t('matches.inbox') }) %>
-<%- include('../partials/nav', { activeNav: 'matches' }) %>
-<%- include('../partials/flash') %>
+<%- include('../partials/nav', { activePage: 'matches' }) %>
 
-<h1 class="section-title" style="margin-top:8px"><%= t('matches.inbox') %></h1>
+<style>
+  .matches-grid { display: grid; grid-template-columns: 1.4fr 1fr; gap: 48px; align-items: start; }
+  .match-card-noir {
+    background: var(--ink-2); border: 1px solid var(--line);
+    padding: 24px; margin-bottom: 14px;
+    cursor: pointer; transition: all .2s;
+  }
+  .match-card-noir:hover { border-color: var(--line-2); }
+  .match-card-noir.selected { border-color: var(--blood); }
+  .match-head { display: flex; justify-content: space-between; align-items: flex-start; gap: 16px; margin-bottom: 14px; }
+  .match-title { font-family: 'Bodoni Moda', serif; font-style: italic; font-weight: 400; font-size: 22px; letter-spacing: -0.01em; line-height: 1.2; margin-bottom: 4px; }
+  .match-sub { font-family: 'DM Mono', monospace; font-size: 11px; letter-spacing: 0.12em; color: var(--ash); text-transform: uppercase; }
+  .match-score-big { font-family:'Bodoni Moda',serif; font-style:italic; font-size: 36px; color: var(--blood); line-height:1; }
+  .match-reason { font-size: 14px; color: var(--paper-2); line-height: 1.6; margin: 12px 0; padding: 12px 14px; border-left: 2px solid var(--blood); background: rgba(179,38,30,0.04); font-style: italic; }
 
-<% if (!matches || matches.length === 0) { %>
-  <div class="card muted"><%= t('matches.empty') %></div>
-<% } else { %>
-  <% matches.forEach(function(m) {
-       var iOwnA = myIds.indexOf(String(m.listingA._id)) !== -1;
-       var iOwnB = myIds.indexOf(String(m.listingB._id)) !== -1;
-       var mine = iOwnA ? m.listingA : m.listingB;
-       var other = iOwnA ? m.listingB : m.listingA;
-       var iAccepted = (iOwnA && (m.status === 'accepted_a' || m.status === 'accepted_both')) ||
-                       (iOwnB && (m.status === 'accepted_b' || m.status === 'accepted_both'));
-       var canAct = (m.status === 'proposed' || m.status === 'accepted_a' || m.status === 'accepted_b') &&
-                    !iAccepted;
-       var tx = (typeof txByMatch !== 'undefined' && txByMatch) ? txByMatch[String(m._id)] : null;
-       var info = (typeof reviewInfo !== 'undefined' && reviewInfo) ? reviewInfo[String(m._id)] : null;
-       var canChat = ['accepted_a','accepted_b','accepted_both'].indexOf(m.status) !== -1;
-       var myUserId = String(currentUser._id);
-       var iAmBuyer = tx && String(tx.buyerId) === myUserId;
-       var iAmSeller = tx && String(tx.sellerId) === myUserId;
-       var meCompleted = tx && ((iAmBuyer && tx.buyerCompletedAt) || (iAmSeller && tx.sellerCompletedAt));
-  %>
-    <div class="match-card">
-      <div class="match-header">
-        <span class="pill"><%= t('matches.status.' + m.status) %></span>
-        <span class="match-score"><%= m.agentScore %></span>
-      </div>
+  /* state machine viz */
+  .sm-rail { background: var(--ink-2); border: 1px solid var(--line); padding: 28px; position: sticky; top: 100px; }
+  .sm-rail h3 { font-family: 'Bodoni Moda', serif; font-style: italic; font-weight: 400; font-size: 22px; margin-bottom: 18px; letter-spacing: -0.01em; }
+  .sm-overview {
+    display: grid; grid-template-columns: repeat(7, auto);
+    gap: 6px; margin-bottom: 32px;
+    font-family: 'DM Mono', monospace; font-size: 10px; letter-spacing: 0.1em; text-transform: uppercase;
+    align-items: center;
+  }
+  .sm-cell { text-align: center; padding: 10px 4px; border: 1px solid var(--line); color: var(--ash); }
+  .sm-cell.on { border-color: var(--blood); color: var(--blood); }
+  .sm-overview .arr { display: grid; place-items: center; color: var(--smoke); border: none; }
+  .sm-line { position: relative; padding-left: 28px; }
+  .sm-line::before { content:""; position:absolute; left:7px; top:6px; bottom:6px; width:1px; background: var(--line-2); }
+  .sm-step { position: relative; padding: 14px 0; border-bottom: 1px dotted var(--line); }
+  .sm-step:last-child { border-bottom: none; }
+  .sm-step::before {
+    content: ""; position: absolute; left: -28px; top: 18px;
+    width: 14px; height: 14px; border: 1px solid var(--smoke); background: var(--ink); border-radius: 50%;
+  }
+  .sm-step.active::before { background: var(--blood); border-color: var(--blood); box-shadow: 0 0 12px rgba(179,38,30,0.6); }
+  .sm-step.done::before { background: var(--green); border-color: var(--green); }
+  .sm-step.terminal::before { background: var(--paper); border-color: var(--paper); }
+  .sm-state { font-family: 'DM Mono', monospace; font-size: 12px; color: var(--paper); letter-spacing: 0.06em; }
+  .sm-when { font-family: 'DM Mono', monospace; font-size: 10px; color: var(--ash); margin-top: 4px; }
 
-      <div class="row" style="gap:12px;flex-wrap:wrap;">
-        <div style="flex:1;min-width:140px;">
-          <div class="muted" style="font-size:0.8rem;"><%= t('matches.youOwn') %></div>
-          <a href="/listings/<%= mine._id %>"><strong><%= mine.title %></strong></a>
-          <div class="muted" style="font-size:0.85rem;">
-            <span class="pill <%= mine.type %>"><%= t('listings.type.' + mine.type) %></span>
-            <% if (mine.type !== 'swap') { %><%= formatPriceRange(mine.priceMin, mine.priceMax, mine.currency) %><% } %>
-          </div>
+  .actions { display: flex; gap: 8px; margin-top: 16px; flex-wrap: wrap; }
+  @media (max-width: 900px) { .matches-grid { grid-template-columns: 1fr; } .sm-rail { position: static; } }
+</style>
+
+<main class="page">
+  <%- include('../partials/flash') %>
+  <div id="banner-slot"></div>
+
+  <header class="page-header">
+    <div class="lead">
+      <div class="page-eyebrow">Inbox del agente</div>
+      <h1 class="page-title">Matches.</h1>
+      <p class="page-sub">otto propone, vos decidís. Cada match queda acá hasta que aceptes, rechaces o expire.</p>
+    </div>
+    <div class="seg" id="filter-seg">
+      <a href="#" class="active" data-f="all">Todos</a>
+      <a href="#" data-f="proposed">Pendientes</a>
+      <a href="#" data-f="accepted">Aceptados</a>
+      <a href="#" data-f="rejected">Cerrados</a>
+    </div>
+  </header>
+
+  <div class="matches-grid">
+    <div>
+      <% if (!matches || matches.length === 0) { %>
+        <div class="empty">
+          <div class="glyph">∅</div>
+          <h3><%= t('matches.empty') %></h3>
+          <p>El agente revisa cada pocos minutos.</p>
         </div>
-        <div style="flex:1;min-width:140px;">
-          <div class="muted" style="font-size:0.8rem;"><%= t('matches.counterpart') %></div>
-          <a href="/listings/<%= other._id %>"><strong><%= other.title %></strong></a>
-          <div class="muted" style="font-size:0.85rem;">
-            <span class="pill <%= other.type %>"><%= t('listings.type.' + other.type) %></span>
-            <% if (other.type !== 'swap') { %><%= formatPriceRange(other.priceMin, other.priceMax, other.currency) %><% } %>
-          </div>
-        </div>
-      </div>
-
-      <div class="rationale">"<%= m.agentRationale %>"</div>
-
-      <div class="muted">
-        <%= t('matches.proposedPrice') %>: <strong><%= formatPrice(m.proposedPrice, m.currency) %></strong>
-        · <%= t('matches.expires') %>: <%= new Date(m.expiresAt).toLocaleString() %>
-      </div>
-
-      <% if (m.status === 'expired' || m.status === 'rejected') { %>
-        <!-- terminal -->
-      <% } else if (m.status === 'accepted_both') {
-           // Show transaction action panel
-        if (tx && tx.status === 'pending') { %>
-          <div class="btn-row" style="margin-top:10px;">
-            <% if (!meCompleted) { %>
-              <form action="/matches/<%= m._id %>/complete" method="post" style="flex:1;">
-                <input type="hidden" name="_csrf" value="<%= csrfToken %>">
-                <button class="btn block" type="submit">
-                  <%= iAmBuyer ? t('matches.completeBuyer') : t('matches.completeSeller') %>
-                </button>
-              </form>
-            <% } else { %>
-              <div class="muted" style="flex:1;text-align:center;align-self:center;"><%= t('matches.completeWaiting') %></div>
-            <% } %>
-            <form action="/matches/<%= m._id %>/cancel-tx" method="post" data-confirm="<%= t('matches.cancelTxConfirm') %>" style="flex:1;">
-              <input type="hidden" name="_csrf" value="<%= csrfToken %>">
-              <button class="btn ghost block" type="submit"><%= t('matches.cancelTx') %></button>
-            </form>
-          </div>
-        <% } %>
-      <% } else if (iAccepted) { %>
-        <div class="muted" style="margin-top:10px;"><%= t('matches.waiting') %></div>
-      <% } else if (canAct) { %>
-        <div class="btn-row" style="margin-top:10px;">
-          <form action="/matches/<%= m._id %>/accept" method="post" style="flex:1;">
-            <input type="hidden" name="_csrf" value="<%= csrfToken %>">
-            <button class="btn block" type="submit"><%= t('matches.accept') %></button>
-          </form>
-          <form action="/matches/<%= m._id %>/reject" method="post" style="flex:1;" data-confirm="<%= t('matches.reject') %>?">
-            <input type="hidden" name="_csrf" value="<%= csrfToken %>">
-            <button class="btn ghost block" type="submit"><%= t('matches.reject') %></button>
-          </form>
-        </div>
-      <% } %>
-
-      <% if (canChat) { %>
-        <div class="btn-row" style="margin-top:10px;">
-          <a class="btn ghost block" href="/messages/<%= m._id %>"><%= t('matches.openChat') %></a>
-        </div>
-      <% } %>
-
-      <%
-        // Counter-offer form (only when match is in negotiation, not closed/expired/accepted_both)
-        var canCounter = ['proposed','accepted_a','accepted_b'].indexOf(m.status) !== -1;
-        if (canCounter) {
-      %>
-        <details style="margin-top:10px;">
-          <summary><%= t('matches.counter') %></summary>
-          <form action="/matches/<%= m._id %>/counter" method="post" style="margin-top:10px;">
-            <input type="hidden" name="_csrf" value="<%= csrfToken %>">
-            <label for="counter-price-<%= m._id %>"><%= t('matches.counterPrice') %></label>
-            <input id="counter-price-<%= m._id %>" type="number" min="0" step="0.01" name="price" required value="<%= m.proposedPrice %>">
-            <label for="counter-msg-<%= m._id %>"><%= t('matches.counterMessage') %></label>
-            <input id="counter-msg-<%= m._id %>" type="text" name="message" maxlength="200">
-            <div class="spacer"></div>
-            <button class="btn block" type="submit"><%= t('matches.counterSubmit') %></button>
-          </form>
-        </details>
-      <% } %>
-
-      <% if (m.offers && m.offers.length) { %>
-        <% m.offers.filter(function(o){ return o.status === 'proposed'; }).forEach(function(o) {
-          var fromMe = String(o.fromUserId) === myUserId;
+      <% } else { %>
+        <% matches.forEach(function(m) {
+             var iOwnA = myIds.indexOf(String(m.listingA._id)) !== -1;
+             var iOwnB = myIds.indexOf(String(m.listingB._id)) !== -1;
+             var mineL = iOwnA ? m.listingA : m.listingB;
+             var other = iOwnA ? m.listingB : m.listingA;
+             var iAccepted = (iOwnA && (m.status === 'accepted_a' || m.status === 'accepted_both')) ||
+                             (iOwnB && (m.status === 'accepted_b' || m.status === 'accepted_both'));
+             var canAct = (m.status === 'proposed' || m.status === 'accepted_a' || m.status === 'accepted_b') && !iAccepted;
+             var tx = (typeof txByMatch !== 'undefined' && txByMatch) ? txByMatch[String(m._id)] : null;
+             var info = (typeof reviewInfo !== 'undefined' && reviewInfo) ? reviewInfo[String(m._id)] : null;
+             var canChat = ['accepted_a','accepted_b','accepted_both'].indexOf(m.status) !== -1;
+             var myUserId = String(currentUser._id);
+             var iAmBuyer = tx && String(tx.buyerId) === myUserId;
+             var iAmSeller = tx && String(tx.sellerId) === myUserId;
+             var meCompleted = tx && ((iAmBuyer && tx.buyerCompletedAt) || (iAmSeller && tx.sellerCompletedAt));
+             var statusClass = m.status === 'accepted_both' ? 'green' : (m.status === 'rejected' || m.status === 'expired' ? 'blood' : 'amber');
         %>
-          <div class="rationale" style="margin-top:8px;">
-            <strong><%= formatPrice(o.price, m.currency) %></strong>
-            <% if (o.message) { %> — "<%= o.message %>"<% } %>
-            <% if (!fromMe) { %>
-              <div class="btn-row" style="margin-top:6px;">
-                <form action="/matches/<%= m._id %>/offers/<%= o._id %>/accept" method="post" style="flex:1;">
-                  <input type="hidden" name="_csrf" value="<%= csrfToken %>">
-                  <button class="btn block" type="submit"><%= t('matches.counterAccept') %></button>
-                </form>
-                <form action="/matches/<%= m._id %>/offers/<%= o._id %>/reject" method="post" style="flex:1;">
-                  <input type="hidden" name="_csrf" value="<%= csrfToken %>">
-                  <button class="btn ghost block" type="submit"><%= t('matches.counterReject') %></button>
-                </form>
+          <article class="match-card-noir"
+                   data-mid="<%= m._id %>"
+                   data-status="<%= m.status %>"
+                   data-tx="<%= tx ? '1' : '0' %>"
+                   data-timeline='<%- JSON.stringify([
+                     { state: 'proposed', at: m.createdAt },
+                     iOwnA && (m.status === 'accepted_a' || m.status === 'accepted_both') ? { state: 'accepted_a', at: m.updatedAt } : null,
+                     iOwnB && (m.status === 'accepted_b' || m.status === 'accepted_both') ? { state: 'accepted_b', at: m.updatedAt } : null,
+                     m.status === 'accepted_both' ? { state: 'accepted_both', at: m.updatedAt } : null,
+                     tx ? { state: 'transaction_' + tx.status, at: tx.completedAt || tx.cancelledAt || tx.createdAt } : null,
+                     m.status === 'rejected' ? { state: 'rejected', at: m.updatedAt } : null,
+                   ].filter(Boolean)) %>'>
+            <div class="match-head">
+              <div>
+                <div class="match-title"><%= mineL.title %></div>
+                <div class="match-sub">
+                  #<%= String(m._id).slice(-6) %> · ↔ <%= other.title %>
+                </div>
               </div>
-            <% } else { %>
-              <div class="muted" style="font-size:0.8rem;margin-top:6px;"><%= t('matches.waiting') %></div>
+              <div style="text-align:right;">
+                <div class="match-score-big"><%= m.agentScore || '—' %></div>
+                <div class="match-sub" style="color:var(--amber); margin-top:4px;">
+                  <%= formatPrice(m.proposedPrice, m.currency) %>
+                </div>
+              </div>
+            </div>
+
+            <% if (m.agentRationale) { %>
+              <div class="match-reason">"<%= m.agentRationale %>"</div>
             <% } %>
-          </div>
+
+            <div style="display:flex; justify-content: space-between; align-items:center; flex-wrap:wrap; gap:10px;">
+              <span class="chip <%= statusClass %>"><span class="dot"></span><%= t('matches.status.' + m.status) %></span>
+              <div class="match-sub">
+                <%= t('matches.expires') %>: <%= new Date(m.expiresAt).toLocaleString() %>
+              </div>
+            </div>
+
+            <div class="actions">
+              <% if (m.status === 'expired' || m.status === 'rejected') { %>
+                <!-- terminal -->
+              <% } else if (m.status === 'accepted_both' && tx && tx.status === 'pending') { %>
+                <% if (!meCompleted) { %>
+                  <form action="/matches/<%= m._id %>/complete" method="post" style="display:inline;">
+                    <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+                    <button class="btn sm" type="submit">
+                      <%= iAmBuyer ? t('matches.completeBuyer') : t('matches.completeSeller') %>
+                    </button>
+                  </form>
+                <% } else { %>
+                  <span class="match-sub"><%= t('matches.completeWaiting') %></span>
+                <% } %>
+                <form action="/matches/<%= m._id %>/cancel-tx" method="post" data-confirm="<%= t('matches.cancelTxConfirm') %>" style="display:inline;">
+                  <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+                  <button class="btn ghost sm" type="submit"><%= t('matches.cancelTx') %></button>
+                </form>
+              <% } else if (iAccepted) { %>
+                <span class="match-sub"><%= t('matches.waiting') %></span>
+              <% } else if (canAct) { %>
+                <form action="/matches/<%= m._id %>/accept" method="post" style="display:inline;">
+                  <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+                  <button class="btn sm" type="submit"><%= t('matches.accept') %></button>
+                </form>
+                <form action="/matches/<%= m._id %>/reject" method="post" data-confirm="<%= t('matches.reject') %>?" style="display:inline;">
+                  <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+                  <button class="btn ghost sm" type="submit"><%= t('matches.reject') %></button>
+                </form>
+              <% } %>
+
+              <% if (canChat) { %>
+                <a class="btn ghost sm" href="/messages/<%= m._id %>"><%= t('matches.openChat') %></a>
+              <% } %>
+
+              <% if (info && info.completed && !info.reviewed) { %>
+                <a class="btn sm" href="/reviews/new/<%= info.transactionId %>"><%= t('review.leave') %></a>
+              <% } %>
+            </div>
+
+            <%
+              var canCounter = ['proposed','accepted_a','accepted_b'].indexOf(m.status) !== -1;
+              if (canCounter) {
+            %>
+              <details style="margin-top:14px;">
+                <summary><%= t('matches.counter') %></summary>
+                <form action="/matches/<%= m._id %>/counter" method="post" style="margin-top:14px;">
+                  <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+                  <div class="field">
+                    <label for="counter-price-<%= m._id %>"><%= t('matches.counterPrice') %></label>
+                    <input class="input" id="counter-price-<%= m._id %>" type="number" min="0" step="0.01" name="price" required value="<%= m.proposedPrice %>">
+                  </div>
+                  <div class="field">
+                    <label for="counter-msg-<%= m._id %>"><%= t('matches.counterMessage') %></label>
+                    <input class="input" id="counter-msg-<%= m._id %>" type="text" name="message" maxlength="200">
+                  </div>
+                  <button class="btn sm" type="submit"><%= t('matches.counterSubmit') %></button>
+                </form>
+              </details>
+            <% } %>
+
+            <% if (m.offers && m.offers.length) { %>
+              <% m.offers.filter(function(o){ return o.status === 'proposed'; }).forEach(function(o) {
+                   var fromMe = String(o.fromUserId) === String(currentUser._id);
+              %>
+                <div class="match-reason" style="margin-top:10px;">
+                  <strong><%= formatPrice(o.price, m.currency) %></strong>
+                  <% if (o.message) { %> — "<%= o.message %>"<% } %>
+                  <% if (!fromMe) { %>
+                    <div class="actions" style="margin-top:8px;">
+                      <form action="/matches/<%= m._id %>/offers/<%= o._id %>/accept" method="post" style="display:inline;">
+                        <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+                        <button class="btn sm" type="submit"><%= t('matches.counterAccept') %></button>
+                      </form>
+                      <form action="/matches/<%= m._id %>/offers/<%= o._id %>/reject" method="post" style="display:inline;">
+                        <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+                        <button class="btn ghost sm" type="submit"><%= t('matches.counterReject') %></button>
+                      </form>
+                    </div>
+                  <% } else { %>
+                    <div class="match-sub" style="margin-top:6px;"><%= t('matches.waiting') %></div>
+                  <% } %>
+                </div>
+              <% }); %>
+            <% } %>
+          </article>
         <% }); %>
       <% } %>
-
-      <% if (info && info.completed && !info.reviewed) { %>
-        <div style="margin-top:10px;">
-          <a class="btn ghost block" href="/reviews/new/<%= info.transactionId %>"><%= t('review.leave') %></a>
-        </div>
-      <% } %>
     </div>
-  <% }); %>
-<% } %>
+
+    <aside class="sm-rail">
+      <h3>State machine</h3>
+      <div class="sm-overview" id="sm-overview"></div>
+      <div class="sm-line" id="sm-line"><div class="match-sub">Seleccioná un match para ver el detalle.</div></div>
+    </aside>
+  </div>
+</main>
+
+<script>
+  (function () {
+    var filterSeg = document.getElementById('filter-seg');
+    var smOverview = document.getElementById('sm-overview');
+    var smLine = document.getElementById('sm-line');
+    var cards = function () { return Array.prototype.slice.call(document.querySelectorAll('.match-card-noir')); };
+    var activeFilter = 'all';
+    var selected = null;
+
+    function applyFilter() {
+      cards().forEach(function (c) {
+        var s = c.dataset.status;
+        var keep = true;
+        if (activeFilter === 'proposed') keep = (s === 'proposed' || s === 'accepted_a' || s === 'accepted_b');
+        else if (activeFilter === 'accepted') keep = (s === 'accepted_both');
+        else if (activeFilter === 'rejected') keep = (s === 'rejected' || s === 'expired');
+        c.style.display = keep ? '' : 'none';
+      });
+    }
+    if (filterSeg) {
+      filterSeg.querySelectorAll('a').forEach(function (a) {
+        a.addEventListener('click', function (e) {
+          e.preventDefault();
+          filterSeg.querySelectorAll('a').forEach(function (x) { x.classList.remove('active'); });
+          a.classList.add('active');
+          activeFilter = a.dataset.f;
+          applyFilter();
+        });
+      });
+    }
+
+    function renderRail(card) {
+      if (!smOverview || !smLine) return;
+      var status = card.dataset.status;
+      var hasTx = card.dataset.tx === '1';
+      var stages = [
+        { key: 'proposed',    label: 'PROPOSED' },
+        { key: 'accepted_a',  label: 'ACCEPTED · 1/2' },
+        { key: 'accepted_both', label: 'ACCEPTED' },
+        { key: 'tx',          label: 'TX' },
+      ];
+      var reachedMap = {
+        proposed:      true,
+        accepted_a:    (status === 'accepted_a' || status === 'accepted_b' || status === 'accepted_both' || hasTx),
+        accepted_both: (status === 'accepted_both' || hasTx),
+        tx:            hasTx,
+      };
+      var html = '';
+      stages.forEach(function (s, i) {
+        html += '<div class="sm-cell ' + (reachedMap[s.key] ? 'on' : '') + '">' + s.label + '</div>';
+        if (i < stages.length - 1) html += '<div class="sm-cell arr">→</div>';
+      });
+      smOverview.innerHTML = html;
+
+      var tl = [];
+      try { tl = JSON.parse(card.dataset.timeline || '[]'); } catch (e) { tl = []; }
+      if (!tl.length) {
+        smLine.innerHTML = '<div class="match-sub">Sin eventos.</div>';
+        return;
+      }
+      var rows = tl.map(function (t, i) {
+        var isLast = i === tl.length - 1;
+        var klass = (t.state === 'rejected' || t.state === 'transaction_cancelled') ? 'terminal'
+                  : t.state === 'transaction_completed' ? 'done'
+                  : isLast ? 'active' : 'done';
+        var when = '';
+        try { when = new Date(t.at).toLocaleString(); } catch (e) {}
+        return '<div class="sm-step ' + klass + '">' +
+          '<div class="sm-state">' + escapeHtml(t.state.replace('_', ' ').toUpperCase()) + '</div>' +
+          '<div class="sm-when">' + escapeHtml(when) + '</div>' +
+        '</div>';
+      });
+      smLine.innerHTML = rows.join('');
+    }
+
+    cards().forEach(function (c) {
+      c.addEventListener('click', function (e) {
+        if (e.target.closest('button, a, form, input, textarea, summary, details')) return;
+        cards().forEach(function (x) { x.classList.remove('selected'); });
+        c.classList.add('selected');
+        selected = c;
+        renderRail(c);
+      });
+    });
+
+    var first = cards()[0];
+    if (first) { first.classList.add('selected'); selected = first; renderRail(first); }
+  })();
+</script>
 
 <%- include('../partials/footer') %>

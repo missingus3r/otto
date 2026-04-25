@@ -3,6 +3,7 @@
 <%- include('../partials/nav') %>
 <% } %>
 
+<main class="page">
 <a class="muted" href="<%= currentUser ? '/listings' : '/' %>">← <%= t('common.back') %></a>
 
 <h1 class="section-title" style="margin-top:8px"><%= t('legal.terms.title') %></h1>
@@ -39,5 +40,6 @@
   <h3>6. Modificaciones</h3>
   <p>Podemos cambiar estos términos en cualquier momento. Cambios significativos se notifican por email o por banner en la app.</p>
 </div>
+</main>
 
 <%- include('../partials/footer') %>

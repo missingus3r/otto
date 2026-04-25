@@ -1,147 +1,239 @@
 <%- include('../partials/header', { pageTitle: t('profile.title') }) %>
-<%- include('../partials/nav', { activeNav: 'profile' }) %>
-<%- include('../partials/flash') %>
+<%- include('../partials/nav', { activePage: 'profile' }) %>
 
-<div class="form-card">
-  <h1><%= t('profile.title') %></h1>
+<style>
+  .profile-grid { display: grid; grid-template-columns: 1fr 1.2fr; gap: 56px; }
+  .stat-row { display: grid; grid-template-columns: repeat(3, 1fr); gap: 0; border:1px solid var(--line); margin-bottom: 24px; }
+  .stat { padding: 22px 20px; border-right:1px solid var(--line); }
+  .stat:last-child { border-right: none; }
+  .stat .n { font-family: 'Bodoni Moda', serif; font-style: italic; font-size: 36px; color: var(--paper); line-height: 1; }
+  .stat .l { font-family: 'DM Mono', monospace; font-size: 10px; letter-spacing: 0.16em; text-transform: uppercase; color: var(--ash); margin-top: 6px; }
+  .review { padding: 16px 18px; border: 1px solid var(--line); margin-bottom: 10px; background: var(--ink-2); }
+  .review .stars { color: var(--amber); letter-spacing: 2px; }
+  .review .meta { font-family: 'DM Mono', monospace; font-size: 11px; color: var(--ash); }
+  .review p { font-size: 14px; color: var(--paper-2); margin-top: 8px; line-height: 1.5; }
+  .seg.tabs { margin: 24px 0 16px; }
+  .avatar-big { width: 120px; height: 120px; background: var(--blood); display:grid; place-items:center; font-family:'Bodoni Moda', serif; font-style:italic; font-size: 64px; color: var(--paper); margin-bottom: 18px; }
+  .danger-zone { margin-top: 32px; padding: 24px; border: 1px solid var(--blood); background: rgba(179,38,30,0.04); }
+  .danger-zone h3 { font-family: 'Bodoni Moda', serif; font-style: italic; color: var(--blood); margin-bottom: 8px; }
+  @media (max-width: 900px) { .profile-grid { grid-template-columns: 1fr; } }
+</style>
+
+<%
+  var dn = (currentUser.displayName || currentUser.email || '?');
+  var initial = String(dn).trim().charAt(0).toUpperCase() || '?';
+%>
+
+<main class="page">
+  <%- include('../partials/flash') %>
+  <div id="banner-slot"></div>
 
   <% if (saved) { %>
-    <div class="flash success"><%= t('common.save') %> ✓</div>
+    <div class="banner success">
+      <div class="banner-stamp">SAVED</div>
+      <div class="banner-body">
+        <div class="banner-title"><%= t('profile.save') %> ✓</div>
+      </div>
+    </div>
   <% } %>
 
-  <div class="row" style="gap:24px;margin-bottom:16px;flex-wrap:wrap;">
-    <div>
-      <div class="muted" style="font-size:0.8rem;"><%= t('profile.stats.listings') %></div>
-      <div style="font-size:1.6rem;font-weight:700;"><%= listingsCount %></div>
-    </div>
-    <div>
-      <div class="muted" style="font-size:0.8rem;"><%= t('profile.stats.deals') %></div>
-      <div style="font-size:1.6rem;font-weight:700;"><%= dealsCount %></div>
-    </div>
-    <div>
-      <div class="muted" style="font-size:0.8rem;"><%= t('profile.reputation') %></div>
-      <div style="font-size:1.6rem;font-weight:700;">
-        <% if (reputation && reputation.count > 0) { %>
-          ★ <%= reputation.avgRating.toFixed(1) %>
-          <span class="muted" style="font-size:0.85rem;">(<%= reputation.count %>)</span>
+  <div class="profile-grid">
+    <aside>
+      <div class="avatar-big"><%= initial %></div>
+      <h1 class="page-title" style="font-size:42px; line-height:1;"><%= dn %></h1>
+      <div class="page-eyebrow" style="margin: 14px 0 24px;">
+        <%= currentUser.email %>
+        <% if (currentUser.city) { %> · <%= currentUser.city %><% } %>
+      </div>
+
+      <div class="stat-row">
+        <div class="stat">
+          <div class="n"><%= listingsCount %></div>
+          <div class="l"><%= t('profile.stats.listings') %></div>
+        </div>
+        <div class="stat">
+          <div class="n"><%= dealsCount %></div>
+          <div class="l"><%= t('profile.stats.deals') %></div>
+        </div>
+        <div class="stat">
+          <div class="n">
+            <% if (reputation && reputation.count > 0) { %>
+              ★ <%= reputation.avgRating.toFixed(1) %>
+            <% } else { %>
+              —
+            <% } %>
+          </div>
+          <div class="l"><%= t('profile.reputation') %></div>
+        </div>
+      </div>
+
+      <div style="margin-bottom:18px;">
+        <button type="button" class="btn ghost sm" data-push-enable><%= t('push.enable') %></button>
+      </div>
+
+      <form action="/profile" method="post">
+        <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+
+        <div class="field">
+          <label for="email"><%= t('auth.email') %></label>
+          <input class="input" id="email" type="email" value="<%= currentUser.email %>" disabled>
+        </div>
+
+        <div class="field">
+          <label for="displayName"><%= t('auth.displayName') %></label>
+          <input class="input" id="displayName" name="displayName" type="text" value="<%= currentUser.displayName || '' %>" maxlength="80">
+        </div>
+
+        <div class="input-row">
+          <div class="field">
+            <label for="lang"><%= t('profile.lang') %></label>
+            <select class="select" id="lang" name="lang">
+              <option value="es"<%= currentUser.lang === 'es' ? ' selected' : '' %>>ES — Español</option>
+              <option value="pt"<%= currentUser.lang === 'pt' ? ' selected' : '' %>>PT — Português</option>
+              <option value="en"<%= currentUser.lang === 'en' ? ' selected' : '' %>>EN — English</option>
+              <option value="fr"<%= currentUser.lang === 'fr' ? ' selected' : '' %>>FR — Français</option>
+              <option value="it"<%= currentUser.lang === 'it' ? ' selected' : '' %>>IT — Italiano</option>
+            </select>
+            <div class="hint">se actualiza al recargar</div>
+          </div>
+          <div class="field">
+            <label for="city"><%= t('profile.city') %></label>
+            <input class="input" id="city" name="city" type="text" value="<%= currentUser.city || '' %>" maxlength="80">
+          </div>
+        </div>
+
+        <div class="field">
+          <label for="country"><%= t('profile.country') %></label>
+          <input class="input" id="country" name="country" type="text" value="<%= currentUser.country || '' %>" maxlength="2" style="text-transform:uppercase;">
+        </div>
+
+        <div class="field">
+          <label><%= t('profile.pushPrefs') %></label>
+          <div class="radio-group" style="flex-direction:column;align-items:flex-start;">
+            <label><input type="checkbox" name="pushMatches" value="1"<%= (currentUser.pushPrefs && currentUser.pushPrefs.matches) ? ' checked' : '' %>> <%= t('profile.pushPrefs.matches') %></label>
+            <label><input type="checkbox" name="pushMessages" value="1"<%= (currentUser.pushPrefs && currentUser.pushPrefs.messages) ? ' checked' : '' %>> <%= t('profile.pushPrefs.messages') %></label>
+            <label><input type="checkbox" name="pushReviews" value="1"<%= (currentUser.pushPrefs && currentUser.pushPrefs.reviews) ? ' checked' : '' %>> <%= t('profile.pushPrefs.reviews') %></label>
+          </div>
+        </div>
+
+        <div style="display:flex; gap:12px; margin-top:8px;">
+          <button class="btn" type="submit"><%= t('profile.save') %></button>
+        </div>
+      </form>
+
+      <hr>
+
+      <h3 style="font-family:'Bodoni Moda',serif; font-style:italic; font-weight:400; font-size:24px; margin-bottom:12px;">
+        <%= t('profile.changePassword') %>
+      </h3>
+      <form action="/profile/password" method="post">
+        <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+        <div class="field">
+          <label for="currentPassword"><%= t('profile.currentPassword') %></label>
+          <input class="input" id="currentPassword" type="password" name="currentPassword" required autocomplete="current-password">
+        </div>
+        <div class="field">
+          <label for="newPassword"><%= t('profile.newPassword') %></label>
+          <input class="input" id="newPassword" type="password" name="newPassword" required minlength="6" autocomplete="new-password">
+        </div>
+        <div class="field">
+          <label for="confirmPassword"><%= t('profile.confirmPassword') %></label>
+          <input class="input" id="confirmPassword" type="password" name="confirmPassword" required minlength="6" autocomplete="new-password">
+        </div>
+        <button class="btn" type="submit"><%= t('profile.changePassword') %></button>
+      </form>
+
+      <hr>
+
+      <h3 style="font-family:'Bodoni Moda',serif; font-style:italic; font-weight:400; font-size:24px; margin-bottom:12px;">
+        <%= t('profile.changeEmail') %>
+      </h3>
+      <form action="/profile/email" method="post">
+        <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+        <div class="field">
+          <label for="newEmail"><%= t('profile.newEmail') %></label>
+          <input class="input" id="newEmail" type="email" name="newEmail" required>
+        </div>
+        <button class="btn" type="submit"><%= t('profile.changeEmail') %></button>
+      </form>
+
+      <div class="danger-zone">
+        <h3><%= t('profile.deleteTitle') %></h3>
+        <p style="color:var(--paper-2); font-size:14px; margin-bottom:12px;"><%= t('profile.deleteIntro', { days: graceDays }) %></p>
+        <form action="/profile/delete" method="post" data-confirm="¿Eliminar la cuenta?">
+          <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+          <div class="field">
+            <label for="confirm"><%= t('profile.deleteConfirm') %></label>
+            <input class="input" id="confirm" type="text" name="confirm" required placeholder="ELIMINAR">
+          </div>
+          <button class="btn danger" type="submit"><%= t('profile.deleteSubmit') %></button>
+        </form>
+      </div>
+    </aside>
+
+    <section>
+      <div class="seg tabs" id="rev-tabs">
+        <a href="#" class="active" data-rt="received"><%= t('review.received') %></a>
+        <a href="#" data-rt="left"><%= t('review.you-left') %></a>
+      </div>
+
+      <div id="reviews-received">
+        <% if (!reviewsReceived || !reviewsReceived.length) { %>
+          <div class="empty"><div class="glyph">∅</div><p><%= t('review.empty') %></p></div>
         <% } else { %>
-          <span class="muted" style="font-size:1rem;"><%= t('review.empty') %></span>
+          <% reviewsReceived.forEach(function(r) { %>
+            <div class="review">
+              <div style="display:flex; justify-content:space-between; align-items:center;">
+                <div class="stars"><%= '★'.repeat(r.rating) %><%= '☆'.repeat(5 - r.rating) %></div>
+                <div class="meta">
+                  de <%= r.fromUserId ? (r.fromUserId.displayName || r.fromUserId.email) : '—' %>
+                  · <%= new Date(r.createdAt).toLocaleDateString() %>
+                </div>
+              </div>
+              <% if (r.comment) { %><p><%= r.comment %></p><% } %>
+            </div>
+          <% }); %>
         <% } %>
       </div>
-    </div>
+
+      <div id="reviews-left" style="display:none;">
+        <% if (!reviewsLeft || !reviewsLeft.length) { %>
+          <div class="empty"><div class="glyph">∅</div><p><%= t('review.empty') %></p></div>
+        <% } else { %>
+          <% reviewsLeft.forEach(function(r) { %>
+            <div class="review">
+              <div style="display:flex; justify-content:space-between; align-items:center;">
+                <div class="stars"><%= '★'.repeat(r.rating) %><%= '☆'.repeat(5 - r.rating) %></div>
+                <div class="meta">
+                  → <%= r.toUserId ? (r.toUserId.displayName || r.toUserId.email) : '—' %>
+                  · <%= new Date(r.createdAt).toLocaleDateString() %>
+                </div>
+              </div>
+              <% if (r.comment) { %><p><%= r.comment %></p><% } %>
+            </div>
+          <% }); %>
+        <% } %>
+      </div>
+    </section>
   </div>
+</main>
 
-  <div class="btn-row" style="margin-bottom:16px;">
-    <button type="button" class="btn ghost" data-push-enable><%= t('push.enable') %></button>
-  </div>
-
-  <hr>
-
-  <form action="/profile" method="post">
-    <input type="hidden" name="_csrf" value="<%= csrfToken %>">
-
-    <label for="email"><%= t('auth.email') %></label>
-    <input id="email" type="email" value="<%= currentUser.email %>" disabled>
-
-    <label for="displayName"><%= t('auth.displayName') %></label>
-    <input id="displayName" name="displayName" type="text" value="<%= currentUser.displayName || '' %>" maxlength="80">
-
-    <label for="city"><%= t('profile.city') %></label>
-    <input id="city" name="city" type="text" value="<%= currentUser.city || '' %>" maxlength="80">
-
-    <label for="country"><%= t('profile.country') %></label>
-    <input id="country" name="country" type="text" value="<%= currentUser.country || '' %>" maxlength="2" style="text-transform:uppercase;">
-
-    <label for="lang"><%= t('profile.lang') %></label>
-    <select id="lang" name="lang">
-      <option value="es"<%= currentUser.lang === 'es' ? ' selected' : '' %>>Español</option>
-      <option value="pt"<%= currentUser.lang === 'pt' ? ' selected' : '' %>>Português</option>
-      <option value="en"<%= currentUser.lang === 'en' ? ' selected' : '' %>>English</option>
-      <option value="fr"<%= currentUser.lang === 'fr' ? ' selected' : '' %>>Français</option>
-      <option value="it"<%= currentUser.lang === 'it' ? ' selected' : '' %>>Italiano</option>
-    </select>
-
-    <label><%= t('profile.pushPrefs') %></label>
-    <div style="display:flex;flex-direction:column;gap:8px;">
-      <label><input type="checkbox" name="pushMatches" value="1"<%= (currentUser.pushPrefs && currentUser.pushPrefs.matches) ? ' checked' : '' %>> <%= t('profile.pushPrefs.matches') %></label>
-      <label><input type="checkbox" name="pushMessages" value="1"<%= (currentUser.pushPrefs && currentUser.pushPrefs.messages) ? ' checked' : '' %>> <%= t('profile.pushPrefs.messages') %></label>
-      <label><input type="checkbox" name="pushReviews" value="1"<%= (currentUser.pushPrefs && currentUser.pushPrefs.reviews) ? ' checked' : '' %>> <%= t('profile.pushPrefs.reviews') %></label>
-    </div>
-
-    <div class="spacer"></div>
-    <button class="btn block" type="submit"><%= t('profile.save') %></button>
-  </form>
-
-  <hr>
-  <h3><%= t('profile.changePassword') %></h3>
-  <form action="/profile/password" method="post">
-    <input type="hidden" name="_csrf" value="<%= csrfToken %>">
-    <label for="currentPassword"><%= t('profile.currentPassword') %></label>
-    <input id="currentPassword" type="password" name="currentPassword" required autocomplete="current-password">
-    <label for="newPassword"><%= t('profile.newPassword') %></label>
-    <input id="newPassword" type="password" name="newPassword" required minlength="6" autocomplete="new-password">
-    <label for="confirmPassword"><%= t('profile.confirmPassword') %></label>
-    <input id="confirmPassword" type="password" name="confirmPassword" required minlength="6" autocomplete="new-password">
-    <div class="spacer"></div>
-    <button class="btn block" type="submit"><%= t('profile.changePassword') %></button>
-  </form>
-
-  <hr>
-  <h3><%= t('profile.changeEmail') %></h3>
-  <form action="/profile/email" method="post">
-    <input type="hidden" name="_csrf" value="<%= csrfToken %>">
-    <label for="newEmail"><%= t('profile.newEmail') %></label>
-    <input id="newEmail" type="email" name="newEmail" required>
-    <div class="spacer"></div>
-    <button class="btn block" type="submit"><%= t('profile.changeEmail') %></button>
-  </form>
-
-  <hr>
-  <h3 style="color: var(--blood);"><%= t('profile.deleteTitle') %></h3>
-  <p class="muted"><%= t('profile.deleteIntro', { days: graceDays }) %></p>
-  <form action="/profile/delete" method="post">
-    <input type="hidden" name="_csrf" value="<%= csrfToken %>">
-    <label for="confirm"><%= t('profile.deleteConfirm') %></label>
-    <input id="confirm" type="text" name="confirm" required placeholder="ELIMINAR">
-    <div class="spacer"></div>
-    <button class="btn danger block" type="submit"><%= t('profile.deleteSubmit') %></button>
-  </form>
-</div>
-
-<% if (reviewsReceived && reviewsReceived.length) { %>
-  <h2 class="section-title"><%= t('review.received') %></h2>
-  <% reviewsReceived.forEach(function(r) { %>
-    <div class="card">
-      <div class="row between">
-        <strong>★ <%= r.rating %></strong>
-        <span class="muted" style="font-size:0.85rem;"><%= new Date(r.createdAt).toLocaleDateString() %></span>
-      </div>
-      <% if (r.comment) { %>
-        <div class="rationale">"<%= r.comment %>"</div>
-      <% } %>
-      <div class="muted" style="font-size:0.85rem;">
-        <%= r.fromUserId ? (r.fromUserId.displayName || r.fromUserId.email) : '—' %>
-      </div>
-    </div>
-  <% }); %>
-<% } %>
-
-<% if (reviewsLeft && reviewsLeft.length) { %>
-  <h2 class="section-title"><%= t('review.you-left') %></h2>
-  <% reviewsLeft.forEach(function(r) { %>
-    <div class="card">
-      <div class="row between">
-        <strong>★ <%= r.rating %></strong>
-        <span class="muted" style="font-size:0.85rem;"><%= new Date(r.createdAt).toLocaleDateString() %></span>
-      </div>
-      <% if (r.comment) { %>
-        <div class="rationale">"<%= r.comment %>"</div>
-      <% } %>
-      <div class="muted" style="font-size:0.85rem;">
-        → <%= r.toUserId ? (r.toUserId.displayName || r.toUserId.email) : '—' %>
-      </div>
-    </div>
-  <% }); %>
-<% } %>
+<script>
+  (function () {
+    var tabs = document.querySelectorAll('#rev-tabs a');
+    var rec = document.getElementById('reviews-received');
+    var left = document.getElementById('reviews-left');
+    tabs.forEach(function (a) {
+      a.addEventListener('click', function (e) {
+        e.preventDefault();
+        tabs.forEach(function (x) { x.classList.remove('active'); });
+        a.classList.add('active');
+        var which = a.dataset.rt;
+        if (rec) rec.style.display = which === 'received' ? '' : 'none';
+        if (left) left.style.display = which === 'left' ? '' : 'none';
+      });
+    });
+  })();
+</script>
 
 <%- include('../partials/footer') %>

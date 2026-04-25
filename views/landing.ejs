@@ -1,5 +1,6 @@
 <%- include('partials/header', { pageTitle: t('app.name') }) %>
 
+<main class="page">
 <section class="hero">
   <h1><%= t('landing.hero.title') %></h1>
   <p><%= t('landing.hero.subtitle') %></p>
@@ -47,5 +48,6 @@
 <div class="center">
   <a class="btn" href="/auth/register"><%= t('landing.cta.primary') %></a>
 </div>
+</main>
 
 <%- include('partials/footer') %>

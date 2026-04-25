@@ -1,0 +1,210 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>otto · nuevo listing</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@300;400;500&family=Inter:wght@300;400;500;600&family=Bodoni+Moda:ital,wght@0,400;0,700;0,900;1,400;1,700;1,900&display=swap" rel="stylesheet" />
+<link rel="stylesheet" href="_shared.css" />
+<style>
+  .form-grid { display: grid; grid-template-columns: 1.4fr 1fr; gap: 56px; }
+  .form-aside { position: sticky; top: 100px; align-self: start; }
+  .pipeline {
+    background: var(--ink-2); border: 1px solid var(--line); padding: 24px;
+    font-family: 'DM Mono', monospace; font-size: 12px; line-height: 1.7; color: var(--paper-2);
+  }
+  .pipeline h4 { font-family: 'DM Mono', monospace; font-size: 11px; letter-spacing: 0.2em; color: var(--blood); text-transform: uppercase; margin-bottom: 16px; }
+  .pipeline ol { list-style: none; counter-reset: step; }
+  .pipeline li { counter-increment: step; padding: 8px 0 8px 32px; position: relative; border-bottom: 1px dotted var(--line); }
+  .pipeline li:last-child { border-bottom: none; }
+  .pipeline li::before { content: counter(step, decimal-leading-zero); position: absolute; left: 0; top: 8px; color: var(--blood); font-weight: 500; }
+  .pipeline code { color: var(--amber); }
+  .photo-drop {
+    border: 1px dashed var(--line-2);
+    background: rgba(0,0,0,0.3);
+    padding: 32px; text-align: center;
+    cursor: pointer; transition: all .2s;
+  }
+  .photo-drop:hover { border-color: var(--paper); background: rgba(0,0,0,0.45); }
+  .photo-drop .glyph { font-family: 'Bodoni Moda', serif; font-style: italic; font-size: 48px; color: var(--smoke); margin-bottom: 8px; }
+  .photo-drop p { font-family: 'DM Mono', monospace; font-size: 11px; letter-spacing: 0.1em; color: var(--ash); text-transform: uppercase; }
+  .kind-radio { display: grid; grid-template-columns: repeat(3, 1fr); gap: 0; border: 1px solid var(--line-2); }
+  .kind-radio label {
+    padding: 14px; text-align: center; cursor: pointer;
+    border-right: 1px solid var(--line-2);
+    font-family: 'DM Mono', monospace; font-size: 11px; letter-spacing: 0.14em; text-transform: uppercase;
+    color: var(--ash);
+    transition: all .2s;
+  }
+  .kind-radio label:last-child { border-right: none; }
+  .kind-radio input { display: none; }
+  .kind-radio label:hover { color: var(--paper); }
+  .kind-radio input:checked + span { color: var(--paper); }
+  .kind-radio label:has(input:checked) { background: var(--blood); color: var(--paper); }
+  @media (max-width: 980px) { .form-grid { grid-template-columns: 1fr; } .form-aside { position: static; } }
+</style>
+</head>
+<body>
+
+<div id="nav-slot"></div>
+
+<main class="page">
+  <header class="page-header">
+    <div class="lead">
+      <div class="page-eyebrow"><a href="listings.html" style="color:var(--ash);text-decoration:none;">← Listings</a></div>
+      <h1 class="page-title">Nuevo <em>expediente.</em></h1>
+      <p class="page-sub">Definí qué, cuánto y en qué rango. El agente arranca a escanear apenas guardes.</p>
+    </div>
+  </header>
+
+  <div id="banner-slot"></div>
+
+  <div class="form-grid">
+    <form id="new-form" novalidate>
+      <div class="field">
+        <label>Tipo de operación <span class="req">*</span></label>
+        <div class="kind-radio">
+          <label><input type="radio" name="kind" value="sell" checked /><span>Vendo</span></label>
+          <label><input type="radio" name="kind" value="buy" /><span>Busco</span></label>
+          <label><input type="radio" name="kind" value="trade" /><span>Trueque</span></label>
+        </div>
+      </div>
+
+      <div class="field" id="f-title">
+        <label for="title">Título <span class="req">*</span></label>
+        <input class="input" type="text" name="title" id="title" maxlength="80" required placeholder="Ej: Polaroid SX-70 vintage funcionando" />
+        <div class="hint">3–80 caracteres · sanitize: strip HTML, escape unicode</div>
+        <div class="field-error">requerido, mínimo 3 caracteres</div>
+      </div>
+
+      <div class="field" id="f-desc">
+        <label for="desc">Descripción <span class="req">*</span></label>
+        <textarea class="textarea" name="desc" id="desc" maxlength="2000" rows="5" required placeholder="Estado, accesorios incluidos, motivo de venta…"></textarea>
+        <div class="hint">10–2000 caracteres · auto-flag si matchea regex de spam/contacto externo</div>
+        <div class="field-error">mínimo 10 caracteres</div>
+      </div>
+
+      <div class="field">
+        <label>Foto principal</label>
+        <div class="photo-drop">
+          <div class="glyph">+</div>
+          <p>Arrastrá o click · jpg/png/webp · máx 8MB</p>
+          <p style="margin-top:6px; color:var(--smoke);">multer → sharp → thumbnail (fire-and-forget)</p>
+        </div>
+        <div class="hint">opcional pero recomendado · score de match cae sin foto</div>
+      </div>
+
+      <div class="input-row">
+        <div class="field" id="f-region">
+          <label for="region">Región <span class="req">*</span></label>
+          <select class="select" name="region" id="region" required>
+            <option value="">—</option>
+            <option>AR · Buenos Aires</option>
+            <option>AR · Córdoba</option>
+            <option>UY · Montevideo</option>
+            <option>BR · São Paulo</option>
+            <option>BR · Rio de Janeiro</option>
+            <option>US · Brooklyn, NY</option>
+            <option>US · Austin, TX</option>
+          </select>
+          <div class="field-error">requerido</div>
+        </div>
+        <div class="field" id="f-currency">
+          <label for="currency">Moneda <span class="req">*</span></label>
+          <select class="select" name="currency" id="currency" required>
+            <option value="">—</option>
+            <option>USD</option><option>ARS</option><option>UYU</option><option>BRL</option>
+          </select>
+          <div class="field-error">requerido</div>
+        </div>
+      </div>
+
+      <div class="input-row">
+        <div class="field" id="f-min">
+          <label for="rangeMin">Piso (no negociable) <span class="req">*</span></label>
+          <input class="input" type="number" name="rangeMin" id="rangeMin" min="1" required />
+          <div class="hint">el agente nunca propondrá nada por debajo</div>
+          <div class="field-error">debe ser &gt; 0</div>
+        </div>
+        <div class="field" id="f-max">
+          <label for="rangeMax">Techo aspiracional <span class="req">*</span></label>
+          <input class="input" type="number" name="rangeMax" id="rangeMax" min="1" required />
+          <div class="hint">si te pagan esto o más, lo cierra rápido</div>
+          <div class="field-error">debe ser ≥ piso</div>
+        </div>
+      </div>
+
+      <div class="field">
+        <label for="tradeFor">Si querés intercambiar, ¿por qué?</label>
+        <input class="input" type="text" name="tradeFor" id="tradeFor" placeholder="Ej: tablet de dibujo Wacom, monitor 27&quot;…" />
+        <div class="hint">solo se usa si tipo = Trueque</div>
+      </div>
+
+      <div style="display:flex; gap:12px; margin-top:32px; flex-wrap:wrap;">
+        <button class="btn" type="submit">Publicar <span class="arrow">→</span></button>
+        <button class="btn ghost" type="button" id="draft">Guardar como draft</button>
+        <a class="btn ghost" href="listings.html">Cancelar</a>
+      </div>
+    </form>
+
+    <aside class="form-aside">
+      <div class="pipeline">
+        <h4>Pipeline POST /listings</h4>
+        <ol>
+          <li><code>multer</code> recibe foto → temp dir</li>
+          <li><code>sanitize</code> strip HTML, normalize unicode</li>
+          <li><code>auto-flag</code> regex spam / contacto externo</li>
+          <li><code>create()</code> → MongoDB con <code>moderation: pending|approved</code></li>
+          <li><code>thumb</code> sharp resize (fire-and-forget, no bloquea)</li>
+          <li><code>302 redirect</code> a <code>/listings/:id</code></li>
+        </ol>
+      </div>
+      <div class="pipeline" style="margin-top:16px;">
+        <h4>Defaults</h4>
+        <div class="kv-row"><div class="k">status</div><div class="v">draft → open al publicar</div></div>
+        <div class="kv-row"><div class="k">moderation</div><div class="v">pending → approved si pasa flag</div></div>
+        <div class="kv-row"><div class="k">currency</div><div class="v">infiere por región</div></div>
+        <div class="kv-row"><div class="k">visibility</div><div class="v">público al aprobarse</div></div>
+      </div>
+    </aside>
+  </div>
+</main>
+
+<script src="_shared.js"></script>
+<script>
+  ottoMountNav("listings");
+
+  const form = document.getElementById("new-form");
+  function validate() {
+    document.querySelectorAll(".field").forEach(f => f.classList.remove("error"));
+    const d = Object.fromEntries(new FormData(form));
+    let ok = true;
+    if (!d.title || d.title.length < 3) { document.getElementById("f-title").classList.add("error"); ok = false; }
+    if (!d.desc || d.desc.length < 10) { document.getElementById("f-desc").classList.add("error"); ok = false; }
+    if (!d.region) { document.getElementById("f-region").classList.add("error"); ok = false; }
+    if (!d.currency) { document.getElementById("f-currency").classList.add("error"); ok = false; }
+    if (!d.rangeMin || +d.rangeMin <= 0) { document.getElementById("f-min").classList.add("error"); ok = false; }
+    if (!d.rangeMax || +d.rangeMax < +d.rangeMin) { document.getElementById("f-max").classList.add("error"); ok = false; }
+    return ok;
+  }
+  form.addEventListener("submit", e => {
+    e.preventDefault();
+    if (!validate()) {
+      ottoBanner({ kind:"error", stamp:"422", title:"Revisá los campos marcados", text:"Algunos campos no pasaron validación cliente." });
+      return;
+    }
+    const d = Object.fromEntries(new FormData(form));
+    if (/whatsapp|telegram|@gmail/i.test(d.title + " " + d.desc)) {
+      ottoBanner({ kind:"warn", stamp:"FLAG", title:"Auto-flag por contacto externo", text:"Detectamos referencias a canales externos. La publicación queda en <code>moderation: flagged</code> hasta revisión manual." });
+      return;
+    }
+    sessionStorage.setItem("flash", JSON.stringify({ kind:"success", stamp:"CREATED", title:"Listing publicado", text:"El agente arranca a escanear cada 5 min. Vas a ver matches en tu inbox." }));
+    location.href = "listings.html";
+  });
+  document.getElementById("draft").addEventListener("click", () => {
+    sessionStorage.setItem("flash", JSON.stringify({ kind:"warn", stamp:"DRAFT", title:"Guardado como borrador", text:"No es visible aún para otros usuarios. Editá y publicá cuando quieras." }));
+    location.href = "listings.html";
+  });
+</script>
+</body>
+</html>

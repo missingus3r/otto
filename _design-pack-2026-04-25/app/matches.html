@@ -1,0 +1,217 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>otto · matches</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@300;400;500&family=Inter:wght@300;400;500;600&family=Bodoni+Moda:ital,wght@0,400;0,700;0,900;1,400;1,700;1,900&display=swap" rel="stylesheet" />
+<link rel="stylesheet" href="_shared.css" />
+<style>
+  .matches-grid { display: grid; grid-template-columns: 1.4fr 1fr; gap: 48px; align-items: start; }
+  .match-card {
+    background: var(--ink-2); border: 1px solid var(--line);
+    padding: 24px; margin-bottom: 14px;
+    cursor: pointer; transition: all .2s;
+  }
+  .match-card:hover { border-color: var(--line-2); }
+  .match-card.selected { border-color: var(--blood); }
+  .match-head { display: flex; justify-content: space-between; align-items: flex-start; gap: 16px; margin-bottom: 14px; }
+  .match-title { font-family: 'Bodoni Moda', serif; font-style: italic; font-weight: 400; font-size: 22px; letter-spacing: -0.01em; line-height: 1.2; margin-bottom: 4px; }
+  .match-sub { font-family: 'DM Mono', monospace; font-size: 11px; letter-spacing: 0.12em; color: var(--ash); text-transform: uppercase; }
+  .match-score-big { font-family:'Bodoni Moda',serif; font-style:italic; font-size: 36px; color: var(--blood); line-height:1; }
+  .match-reason { font-size: 14px; color: var(--paper-2); line-height: 1.6; margin: 12px 0; padding: 12px 14px; border-left: 2px solid var(--blood); background: rgba(179,38,30,0.04); }
+
+  /* state machine viz */
+  .sm-rail { background: var(--ink-2); border: 1px solid var(--line); padding: 28px; position: sticky; top: 100px; }
+  .sm-rail h3 { font-family: 'Bodoni Moda', serif; font-style: italic; font-weight: 400; font-size: 22px; margin-bottom: 18px; letter-spacing: -0.01em; }
+  .sm-line { position: relative; padding-left: 28px; }
+  .sm-line::before { content:""; position:absolute; left:7px; top:6px; bottom:6px; width:1px; background: var(--line-2); }
+  .sm-step { position: relative; padding: 14px 0; border-bottom: 1px dotted var(--line); }
+  .sm-step:last-child { border-bottom: none; }
+  .sm-step::before {
+    content: ""; position: absolute; left: -28px; top: 18px;
+    width: 14px; height: 14px; border: 1px solid var(--smoke); background: var(--ink); border-radius: 50%;
+  }
+  .sm-step.active::before { background: var(--blood); border-color: var(--blood); box-shadow: 0 0 12px rgba(179,38,30,0.6); }
+  .sm-step.done::before { background: var(--green); border-color: var(--green); }
+  .sm-step.terminal::before { background: var(--paper); border-color: var(--paper); }
+  .sm-state { font-family: 'DM Mono', monospace; font-size: 12px; color: var(--paper); letter-spacing: 0.06em; }
+  .sm-when { font-family: 'DM Mono', monospace; font-size: 10px; color: var(--ash); margin-top: 4px; }
+  .sm-actor { font-family: 'DM Mono', monospace; font-size: 10px; color: var(--smoke); }
+
+  .sm-overview {
+    display: grid; grid-template-columns: repeat(5, 1fr);
+    gap: 6px; margin-bottom: 32px;
+    font-family: 'DM Mono', monospace; font-size: 10px; letter-spacing: 0.1em; text-transform: uppercase;
+  }
+  .sm-cell { text-align: center; padding: 10px 4px; border: 1px solid var(--line); color: var(--ash); }
+  .sm-cell.on { border-color: var(--blood); color: var(--blood); }
+  .sm-overview .arr { display:grid; place-items:center; color: var(--smoke); border:none; }
+
+  .actions { display: flex; gap: 8px; margin-top: 16px; flex-wrap: wrap; }
+  @media (max-width: 900px) { .matches-grid { grid-template-columns: 1fr; } .sm-rail { position: static; } }
+</style>
+</head>
+<body>
+
+<div id="nav-slot"></div>
+
+<main class="page">
+  <header class="page-header">
+    <div class="lead">
+      <div class="page-eyebrow">Inbox del agente</div>
+      <h1 class="page-title">Matches.</h1>
+      <p class="page-sub">otto propone, vos decidís. Cada match queda acá hasta que aceptes, rechaces o expire.</p>
+    </div>
+    <div class="seg" id="filter-seg">
+      <a href="#" class="active" data-f="all">Todos</a>
+      <a href="#" data-f="proposed">Pendientes</a>
+      <a href="#" data-f="accepted">Aceptados</a>
+      <a href="#" data-f="rejected">Cerrados</a>
+    </div>
+  </header>
+
+  <div class="matches-grid">
+    <div>
+      <div id="match-list"></div>
+    </div>
+    <aside class="sm-rail">
+      <h3>State machine</h3>
+      <div class="sm-overview" id="sm-overview"></div>
+      <div class="sm-line" id="sm-line"></div>
+    </aside>
+  </div>
+</main>
+
+<script src="_shared.js"></script>
+<script>
+  ottoMountNav("matches");
+
+  const reviewInfo = {
+    "M-921": { canReview: true, hasReviewed: true },
+    "M-902": { canReview: true, hasReviewed: false },
+  };
+
+  const states = ["proposed", "accepted_a", "accepted_b", "accepted_both", "transaction_created"];
+  let activeFilter = "all";
+  let selectedId = null;
+
+  document.querySelectorAll("#filter-seg a").forEach(a => a.addEventListener("click", e => {
+    e.preventDefault();
+    document.querySelectorAll("#filter-seg a").forEach(x => x.classList.remove("active"));
+    a.classList.add("active");
+    activeFilter = a.dataset.f;
+    renderList();
+  }));
+
+  function statusChip(s) {
+    const map = {
+      proposed: ["amber", "PROPOSED"],
+      accepted_a: ["amber", "ACCEPTED · 1/2"],
+      accepted_b: ["amber", "ACCEPTED · 1/2"],
+      accepted_both: ["green", "DEAL · TX OPEN"],
+      rejected: ["blood", "REJECTED"],
+    };
+    const [c, t] = map[s] || ["", s];
+    return `<span class="chip ${c}"><span class="dot"></span>${t}</span>`;
+  }
+
+  function renderList() {
+    const list = OTTO_MATCHES.filter(m => {
+      if (activeFilter === "all") return true;
+      if (activeFilter === "proposed") return m.status === "proposed" || m.status.startsWith("accepted_") && m.status !== "accepted_both";
+      if (activeFilter === "accepted") return m.status === "accepted_both";
+      if (activeFilter === "rejected") return m.status === "rejected";
+    });
+    const html = list.map(m => `
+      <article class="match-card" data-id="${m.id}">
+        <div class="match-head">
+          <div>
+            <div class="match-title">${escapeHtml(m.listingTitle)}</div>
+            <div class="match-sub">${m.id} · ${m.role === "seller" ? "vendés a" : "comprás a"} ${escapeHtml(m.counterparty)} · ${m.proposedAt}</div>
+          </div>
+          <div style="text-align:right;">
+            <div class="match-score-big">${m.score}%</div>
+            <div class="match-sub" style="color:var(--amber); margin-top:4px;">${fmt(m.proposedPrice, m.currency)}</div>
+          </div>
+        </div>
+        <div class="match-reason">${escapeHtml(m.reasoning)}</div>
+        <div style="display:flex; justify-content: space-between; align-items:center; flex-wrap:wrap; gap:10px;">
+          ${statusChip(m.status)}
+          <div class="actions">
+            ${m.status === "proposed" ? `
+              <button class="btn sm" data-act="accept" data-id="${m.id}">Aceptar</button>
+              <button class="btn ghost sm" data-act="reject" data-id="${m.id}">Rechazar</button>` : ""}
+            ${m.status === "accepted_a" && m.role === "seller" ? `<button class="btn sm" data-act="accept" data-id="${m.id}">Confirmar de tu lado</button>` : ""}
+            ${m.status === "accepted_b" && m.role === "buyer" ? `<button class="btn sm" data-act="accept" data-id="${m.id}">Confirmar de tu lado</button>` : ""}
+            ${m.status === "accepted_both" ? (
+              reviewInfo[m.id]?.hasReviewed
+                ? `<span class="chip green"><span class="dot"></span>RESEÑA ENVIADA</span>`
+                : `<button class="btn sm" data-act="review" data-id="${m.id}">Dejar reseña</button>`
+            ) : ""}
+            ${m.status === "rejected" ? `<span class="match-sub">cerrado por ${escapeHtml(m.rejectedBy || "—")}</span>` : ""}
+          </div>
+        </div>
+      </article>
+    `).join("");
+    document.getElementById("match-list").innerHTML = html || `<div class="empty"><div class="glyph">∅</div><h3>Sin matches</h3><p>Probá cambiar el filtro.</p></div>`;
+
+    document.querySelectorAll(".match-card").forEach(c => c.addEventListener("click", e => {
+      if (e.target.closest("[data-act]")) return;
+      selectedId = c.dataset.id;
+      document.querySelectorAll(".match-card").forEach(x => x.classList.toggle("selected", x.dataset.id === selectedId));
+      renderRail();
+    }));
+    document.querySelectorAll("[data-act]").forEach(b => b.addEventListener("click", e => {
+      const act = b.dataset.act, id = b.dataset.id;
+      const m = OTTO_MATCHES.find(x => x.id === id);
+      if (act === "accept") {
+        m.status = m.status === "proposed" ? (m.role === "buyer" ? "accepted_a" : "accepted_a") : "accepted_both";
+        if (m.status === "accepted_both") m.transactionId = "T-" + Math.floor(Math.random()*99);
+        renderList(); renderRail();
+      } else if (act === "reject") {
+        m.status = "rejected"; m.rejectedBy = "vos";
+        renderList();
+      } else if (act === "review") {
+        ottoBanner({ kind:"success", stamp:"REVIEW", title:"Reseña enviada", text:"Gracias. La reputación de la contraparte se actualiza al instante." });
+        reviewInfo[id] = { canReview:true, hasReviewed:true };
+        renderList();
+      }
+    }));
+
+    if (!selectedId && list.length) { selectedId = list[0].id; document.querySelector(`[data-id="${selectedId}"]`)?.classList.add("selected"); }
+    renderRail();
+  }
+
+  function renderRail() {
+    const m = OTTO_MATCHES.find(x => x.id === selectedId) || OTTO_MATCHES[0];
+    const ovHtml = ["proposed","accepted_a","accepted_both","tx"].map((s, i, arr) => {
+      const reached = (s === "proposed") ||
+        (s === "accepted_a" && (m.status.startsWith("accepted_") || m.transactionId)) ||
+        (s === "accepted_both" && (m.status === "accepted_both" || m.transactionId)) ||
+        (s === "tx" && !!m.transactionId);
+      const cells = `<div class="sm-cell ${reached ? "on" : ""}">${s.replace("_"," ")}</div>`;
+      const arr_ = i < arr.length - 1 ? `<div class="sm-cell arr">→</div>` : "";
+      return cells + arr_;
+    }).join("");
+    document.getElementById("sm-overview").innerHTML = ovHtml;
+
+    const stepHtml = m.timeline.map((t, i) => {
+      const isLast = i === m.timeline.length - 1;
+      const klass = t.state === "rejected" ? "terminal"
+        : t.state === "transaction_created" ? "done"
+        : isLast ? "active" : "done";
+      return `
+        <div class="sm-step ${klass}">
+          <div class="sm-state">${t.state.replace("_"," ").toUpperCase()}</div>
+          <div class="sm-when">${t.at}</div>
+          <div class="sm-actor">por ${escapeHtml(t.actor)}</div>
+        </div>`;
+    }).join("");
+    document.getElementById("sm-line").innerHTML = stepHtml;
+  }
+
+  renderList();
+</script>
+</body>
+</html>

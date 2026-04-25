@@ -1,0 +1,132 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>otto · perfil</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@300;400;500&family=Inter:wght@300;400;500;600&family=Bodoni+Moda:ital,wght@0,400;0,700;0,900;1,400;1,700;1,900&display=swap" rel="stylesheet" />
+<link rel="stylesheet" href="_shared.css" />
+<style>
+  .profile-grid { display: grid; grid-template-columns: 1fr 1.2fr; gap: 56px; }
+  .stat-row { display: grid; grid-template-columns: repeat(3, 1fr); gap: 0; border:1px solid var(--line); margin-bottom: 24px; }
+  .stat { padding: 22px 20px; border-right:1px solid var(--line); }
+  .stat:last-child { border-right: none; }
+  .stat .n { font-family: 'Bodoni Moda', serif; font-style: italic; font-size: 36px; color: var(--paper); line-height: 1; }
+  .stat .l { font-family: 'DM Mono', monospace; font-size: 10px; letter-spacing: 0.16em; text-transform: uppercase; color: var(--ash); margin-top: 6px; }
+  .review { padding: 16px 18px; border: 1px solid var(--line); margin-bottom: 10px; background: var(--ink-2); }
+  .review .stars { color: var(--amber); letter-spacing: 2px; }
+  .review .meta { font-family: 'DM Mono', monospace; font-size: 11px; color: var(--ash); }
+  .review p { font-size: 14px; color: var(--paper-2); margin-top: 8px; line-height: 1.5; }
+  .seg.tabs { margin: 24px 0 16px; }
+  .avatar-big { width: 120px; height: 120px; background: var(--blood); display:grid; place-items:center; font-family:'Bodoni Moda', serif; font-style:italic; font-size: 64px; color: var(--paper); margin-bottom: 18px; }
+  @media (max-width: 900px) { .profile-grid { grid-template-columns: 1fr; } }
+</style>
+</head>
+<body>
+<div id="nav-slot"></div>
+
+<main class="page">
+  <div id="banner-slot"></div>
+
+  <div class="profile-grid">
+    <aside>
+      <div id="avatar" class="avatar-big">A</div>
+      <h1 id="name" class="page-title" style="font-size:42px; line-height:1;">—</h1>
+      <div id="meta" class="page-eyebrow" style="margin: 14px 0 24px;"></div>
+
+      <div class="stat-row" id="stats"></div>
+
+      <form id="profile-form">
+        <div class="field"><label>Display name</label><input class="input" id="displayName" /></div>
+        <div class="field"><label>Email</label><input class="input" id="email" disabled /></div>
+        <div class="input-row">
+          <div class="field">
+            <label>Idioma de sesión</label>
+            <select class="select" id="lang">
+              <option value="es">ES — Español</option>
+              <option value="pt">PT — Português</option>
+              <option value="en">EN — English</option>
+            </select>
+            <div class="hint">se actualiza en vivo · session.lang = nuevo valor</div>
+          </div>
+          <div class="field">
+            <label>Región</label>
+            <input class="input" id="region" />
+          </div>
+        </div>
+        <div style="display:flex; gap:12px; margin-top:8px;">
+          <button class="btn" type="submit">Guardar cambios</button>
+          <button class="btn ghost" type="button" id="logout">Cerrar sesión</button>
+        </div>
+      </form>
+    </aside>
+
+    <section>
+      <div class="seg tabs" id="rev-tabs">
+        <a href="#" class="active" data-rt="received">Recibidas</a>
+        <a href="#" data-rt="given">Dadas</a>
+      </div>
+      <div id="reviews"></div>
+    </section>
+  </div>
+</main>
+
+<script src="_shared.js"></script>
+<script>
+  ottoMountNav("profile");
+  const u = ottoUser();
+  document.getElementById("avatar").textContent = (u.displayName || "?")[0];
+  document.getElementById("name").textContent = u.displayName;
+  document.getElementById("meta").innerHTML = `${u.region} · joined ${u.joined} · last login ${u.lastLoginAt}`;
+  document.getElementById("displayName").value = u.displayName;
+  document.getElementById("email").value = u.email;
+  document.getElementById("lang").value = u.lang;
+  document.getElementById("region").value = u.region;
+
+  const myListings = OTTO_LISTINGS.filter(l => l.owner === u.id).length;
+  const myMatches = OTTO_MATCHES.length;
+  const myDeals = OTTO_MATCHES.filter(m => m.status === "accepted_both").length;
+  document.getElementById("stats").innerHTML = `
+    <div class="stat"><div class="n">${myListings}</div><div class="l">Listings</div></div>
+    <div class="stat"><div class="n">${myMatches}</div><div class="l">Matches</div></div>
+    <div class="stat"><div class="n">${myDeals}</div><div class="l">Deals cerrados</div></div>
+  `;
+
+  let rt = "received";
+  document.querySelectorAll("#rev-tabs a").forEach(a => a.addEventListener("click", e => {
+    e.preventDefault();
+    document.querySelectorAll("#rev-tabs a").forEach(x => x.classList.remove("active"));
+    a.classList.add("active");
+    rt = a.dataset.rt;
+    renderRev();
+  }));
+
+  function renderRev() {
+    const list = OTTO_REVIEWS[rt];
+    if (!list.length) { document.getElementById("reviews").innerHTML = `<div class="empty"><div class="glyph">∅</div><p>Sin reseñas todavía.</p></div>`; return; }
+    document.getElementById("reviews").innerHTML = list.map(r => `
+      <div class="review">
+        <div style="display:flex; justify-content:space-between; align-items:center;">
+          <div class="stars">${"★".repeat(r.stars)}${"☆".repeat(5 - r.stars)}</div>
+          <div class="meta">${rt === "received" ? "de " + escapeHtml(r.from) : "para " + escapeHtml(r.to)} · ${r.at} · ${r.forMatch}</div>
+        </div>
+        <p>${escapeHtml(r.text)}</p>
+      </div>
+    `).join("");
+  }
+  renderRev();
+
+  document.getElementById("profile-form").addEventListener("submit", e => {
+    e.preventDefault();
+    const updated = { ...u, displayName: document.getElementById("displayName").value, lang: document.getElementById("lang").value, region: document.getElementById("region").value };
+    ottoSetUser(updated);
+    ottoBanner({ kind:"success", stamp:"SAVED", title:"Perfil actualizado", text:"<code>session.lang = " + updated.lang + "</code> aplicado en vivo. Idioma cambia al recargar." });
+    document.getElementById("name").textContent = updated.displayName;
+  });
+  document.getElementById("logout").addEventListener("click", () => {
+    ottoLogout();
+    location.href = "login.html";
+  });
+</script>
+</body>
+</html>
