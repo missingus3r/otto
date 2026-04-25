@@ -66,10 +66,15 @@ async function start() {
       fs.mkdirSync(uploadsDir, { recursive: true });
     }
 
-    // security middleware — relaxed CSP so inline EJS scripts work without CDN
+    // security middleware — relaxed CSP so inline EJS scripts work without CDN.
+    // upgradeInsecureRequests + HSTS disabled because we serve over plain HTTP
+    // in dev/LAN; otherwise the browser upgrades /css/main.css to https://
+    // and the connection refuses, leaving the page unstyled.
+    const isProd = process.env.NODE_ENV === 'production';
     app.use(
       helmet({
         contentSecurityPolicy: {
+          useDefaults: false,
           directives: {
             defaultSrc: ["'self'"],
             scriptSrc: ["'self'", "'unsafe-inline'"],
@@ -80,8 +85,10 @@ async function start() {
             objectSrc: ["'none'"],
             baseUri: ["'self'"],
             formAction: ["'self'"],
+            ...(isProd ? { upgradeInsecureRequests: [] } : {}),
           },
         },
+        hsts: isProd,
         crossOriginEmbedderPolicy: false,
       })
     );
