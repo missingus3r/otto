@@ -1,0 +1,730 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#2563eb">
+  <title>otto · marketplace con agente IA</title>
+  <meta name="description" content="otto es un marketplace donde publicás un item con tu rango de precio y un agente IA negocia por vos. Vos solo aceptás cuando hay un buen deal. Inspirado por Anthropic Project Deal.">
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ccircle cx='50' cy='50' r='44' fill='%232563eb'/%3E%3Ctext x='50' y='66' text-anchor='middle' font-family='ui-sans-serif,system-ui' font-size='52' font-weight='700' fill='white'%3Eo%3C/text%3E%3C/svg%3E">
+  <style>
+    :root {
+      --bg: #fafafa;
+      --fg: #18181b;
+      --muted: #6b7280;
+      --border: #e5e7eb;
+      --card: #ffffff;
+      --accent: #2563eb;
+      --accent-2: #6366f1;
+      --accent-3: #06b6d4;
+      --radius: 14px;
+      --shadow: 0 1px 3px rgba(0,0,0,0.06), 0 4px 16px rgba(0,0,0,0.04);
+    }
+    @media (prefers-color-scheme: dark) {
+      :root {
+        --bg: #0a0a0b;
+        --fg: #f4f4f5;
+        --muted: #a1a1aa;
+        --border: #27272a;
+        --card: #18181b;
+        --shadow: 0 1px 3px rgba(0,0,0,0.4), 0 4px 16px rgba(0,0,0,0.2);
+      }
+    }
+    * { box-sizing: border-box; }
+    html { scroll-behavior: smooth; }
+    body {
+      margin: 0;
+      font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+      background: var(--bg);
+      color: var(--fg);
+      line-height: 1.55;
+      -webkit-font-smoothing: antialiased;
+    }
+    a { color: var(--accent); text-decoration: none; }
+    a:hover { text-decoration: underline; }
+    .container { max-width: 880px; margin: 0 auto; padding: 0 20px; }
+    .nav {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 18px 20px;
+      max-width: 1100px;
+      margin: 0 auto;
+    }
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-weight: 700;
+      font-size: 20px;
+      color: var(--fg);
+      text-decoration: none;
+    }
+    .brand-mark {
+      width: 32px; height: 32px;
+      border-radius: 8px;
+      background: linear-gradient(135deg, var(--accent-2), var(--accent), var(--accent-3));
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      color: white;
+      font-weight: 800;
+    }
+    .lang-switch {
+      display: flex;
+      gap: 6px;
+      font-size: 13px;
+    }
+    .lang-switch button {
+      background: transparent;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 4px 8px;
+      color: var(--muted);
+      cursor: pointer;
+      font-family: inherit;
+    }
+    .lang-switch button.active {
+      color: white;
+      background: var(--accent);
+      border-color: var(--accent);
+    }
+    .hero {
+      background: linear-gradient(135deg, var(--accent-2) 0%, var(--accent) 50%, var(--accent-3) 100%);
+      color: white;
+      padding: 64px 20px 80px;
+      text-align: center;
+    }
+    .hero h1 {
+      font-size: clamp(32px, 6vw, 52px);
+      line-height: 1.1;
+      margin: 0 0 20px;
+      font-weight: 800;
+      letter-spacing: -0.02em;
+    }
+    .hero p {
+      font-size: clamp(17px, 2vw, 21px);
+      opacity: 0.95;
+      max-width: 600px;
+      margin: 0 auto 32px;
+    }
+    .cta-group {
+      display: flex;
+      gap: 12px;
+      justify-content: center;
+      flex-wrap: wrap;
+    }
+    .btn {
+      display: inline-block;
+      padding: 14px 26px;
+      border-radius: 10px;
+      font-weight: 600;
+      font-size: 16px;
+      text-decoration: none;
+      min-height: 48px;
+      line-height: 1.2;
+      transition: transform 0.1s ease;
+      border: none;
+      cursor: pointer;
+      font-family: inherit;
+    }
+    .btn:hover { transform: translateY(-1px); text-decoration: none; }
+    .btn-primary {
+      background: white;
+      color: var(--accent);
+    }
+    .btn-secondary {
+      background: rgba(255,255,255,0.15);
+      color: white;
+      backdrop-filter: blur(8px);
+      border: 1px solid rgba(255,255,255,0.3);
+    }
+    section {
+      padding: 64px 0;
+    }
+    section h2 {
+      font-size: clamp(26px, 4vw, 36px);
+      margin: 0 0 12px;
+      letter-spacing: -0.01em;
+    }
+    section .lead {
+      color: var(--muted);
+      font-size: 17px;
+      margin: 0 0 40px;
+    }
+    .grid {
+      display: grid;
+      gap: 20px;
+    }
+    .grid-3 { grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); }
+    .grid-2 { grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); }
+    .card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 24px;
+      box-shadow: var(--shadow);
+    }
+    .card .icon {
+      width: 44px; height: 44px;
+      border-radius: 10px;
+      background: linear-gradient(135deg, var(--accent-2), var(--accent));
+      color: white;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 700;
+      font-size: 18px;
+      margin-bottom: 14px;
+    }
+    .card h3 { margin: 0 0 8px; font-size: 18px; }
+    .card p { margin: 0; color: var(--muted); font-size: 15px; }
+    .step {
+      display: flex;
+      gap: 18px;
+      align-items: flex-start;
+      padding: 20px 0;
+      border-bottom: 1px solid var(--border);
+    }
+    .step:last-child { border-bottom: none; }
+    .step-num {
+      flex-shrink: 0;
+      width: 36px; height: 36px;
+      border-radius: 50%;
+      background: var(--accent);
+      color: white;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 700;
+    }
+    .step-body h3 { margin: 0 0 6px; font-size: 18px; }
+    .step-body p { margin: 0; color: var(--muted); font-size: 15px; }
+    .compare {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 14px;
+      margin-top: 28px;
+    }
+    .compare > div {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 22px;
+    }
+    .compare h4 { margin: 0 0 14px; font-size: 16px; }
+    .compare ul { margin: 0; padding-left: 20px; color: var(--muted); font-size: 14.5px; line-height: 1.7; }
+    .compare .traditional h4 { color: var(--muted); }
+    .compare .otto h4 { color: var(--accent); }
+    .quote-anthropic {
+      background: var(--card);
+      border-left: 3px solid var(--accent);
+      padding: 20px 24px;
+      border-radius: 8px;
+      margin: 28px 0;
+      font-size: 15.5px;
+      color: var(--muted);
+    }
+    .quote-anthropic strong { color: var(--fg); }
+    details {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 16px 20px;
+      margin-bottom: 12px;
+    }
+    details[open] { box-shadow: var(--shadow); }
+    details summary {
+      cursor: pointer;
+      font-weight: 600;
+      font-size: 16px;
+      list-style: none;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 16px;
+    }
+    details summary::-webkit-details-marker { display: none; }
+    details summary::after {
+      content: "+";
+      color: var(--accent);
+      font-size: 22px;
+      font-weight: 400;
+      transition: transform 0.15s;
+    }
+    details[open] summary::after { content: "−"; }
+    details p {
+      margin: 14px 0 0;
+      color: var(--muted);
+      font-size: 15px;
+      line-height: 1.6;
+    }
+    footer {
+      padding: 40px 20px;
+      text-align: center;
+      color: var(--muted);
+      font-size: 14px;
+      border-top: 1px solid var(--border);
+      margin-top: 40px;
+    }
+    footer a { color: var(--muted); }
+    .badge {
+      display: inline-block;
+      background: rgba(255,255,255,0.18);
+      border: 1px solid rgba(255,255,255,0.28);
+      color: white;
+      padding: 4px 12px;
+      border-radius: 999px;
+      font-size: 13px;
+      margin-bottom: 16px;
+      backdrop-filter: blur(8px);
+    }
+    @media (max-width: 600px) {
+      .compare { grid-template-columns: 1fr; }
+      section { padding: 48px 0; }
+      .hero { padding: 48px 20px 64px; }
+      .nav { padding: 14px 20px; }
+    }
+  </style>
+</head>
+<body>
+
+<header class="nav">
+  <a class="brand" href="#">
+    <span class="brand-mark">o</span>
+    <span>otto</span>
+  </a>
+  <div class="lang-switch">
+    <button data-lang="es" class="active">ES</button>
+    <button data-lang="pt">PT</button>
+    <button data-lang="en">EN</button>
+  </div>
+</header>
+
+<section class="hero">
+  <span class="badge" data-i18n="badge">Inspirado por Anthropic Project Deal</span>
+  <h1 data-i18n="hero.title">Negociá más inteligente.<br>Dejá que el agente hable.</h1>
+  <p data-i18n="hero.subtitle">Publicás lo que querés vender, comprar o intercambiar. Un agente IA recorre el mercado por vos y te avisa solo cuando hay un trato que vale la pena.</p>
+  <div class="cta-group">
+    <a class="btn btn-primary" href="https://github.com/missingus3r/otto" data-i18n="cta.primary">Ver en GitHub</a>
+    <a class="btn btn-secondary" href="#how-it-works" data-i18n="cta.secondary">Cómo funciona</a>
+  </div>
+</section>
+
+<section class="container" id="what">
+  <h2 data-i18n="what.title">¿Qué resuelve otto?</h2>
+  <p class="lead" data-i18n="what.lead">El problema con los marketplaces actuales no es que no haya ofertas — es el ruido. Buscar, regatear, contestar mensajes, comparar precios. Otto se mete en el medio y hace todo eso por vos.</p>
+  <div class="grid grid-3">
+    <div class="card">
+      <div class="icon">⏱</div>
+      <h3 data-i18n="what.f1.t">Cero búsquedas</h3>
+      <p data-i18n="what.f1.b">No abrís 8 pestañas para comparar precios. El agente lo hace en segundos.</p>
+    </div>
+    <div class="card">
+      <div class="icon">💬</div>
+      <h3 data-i18n="what.f2.t">Cero charlas tediosas</h3>
+      <p data-i18n="what.f2.b">El agente regatea por vos. Vos solo decidís si aceptás o no.</p>
+    </div>
+    <div class="card">
+      <div class="icon">🔔</div>
+      <h3 data-i18n="what.f3.t">Te llegan los buenos deals</h3>
+      <p data-i18n="what.f3.b">Sin scrolling infinito. Te avisamos cuando algo encaja con tu rango.</p>
+    </div>
+  </div>
+</section>
+
+<section class="container" id="how-it-works" style="background: var(--card); border-radius: var(--radius); margin: 0 20px; padding: 48px 28px;">
+  <h2 data-i18n="how.title">¿Cómo funciona?</h2>
+  <p class="lead" data-i18n="how.lead">Tres pasos. Sin curva de aprendizaje.</p>
+
+  <div class="step">
+    <div class="step-num">1</div>
+    <div class="step-body">
+      <h3 data-i18n="how.s1.t">Publicás con un rango</h3>
+      <p data-i18n="how.s1.b">Subís foto y descripción. En vez de un precio fijo, definís un rango (mínimo aceptable y techo). Si querés intercambiar por otro item, lo describís.</p>
+    </div>
+  </div>
+
+  <div class="step">
+    <div class="step-num">2</div>
+    <div class="step-body">
+      <h3 data-i18n="how.s2.t">El agente recorre el mercado</h3>
+      <p data-i18n="how.s2.b">Cada pocos minutos, un único modelo IA escanea todas las publicaciones abiertas, busca compatibilidades, consulta precios de referencia y propone matches con un razonamiento explícito.</p>
+    </div>
+  </div>
+
+  <div class="step">
+    <div class="step-num">3</div>
+    <div class="step-body">
+      <h3 data-i18n="how.s3.t">Vos aceptás o rechazás</h3>
+      <p data-i18n="how.s3.b">Te llega el match a tu inbox con score, precio sugerido y la justificación del agente. Un tap para aceptar. Nada se cierra sin tu aprobación.</p>
+    </div>
+  </div>
+</section>
+
+<section class="container" id="why-one-model">
+  <h2 data-i18n="why.title">¿Por qué un solo modelo para todos?</h2>
+  <p class="lead" data-i18n="why.lead">Porque la alternativa, agentes separados por usuario, ya se probó — y reveló un problema serio.</p>
+
+  <div class="quote-anthropic">
+    <strong>Project Deal (Anthropic, dic. 2025)</strong> — 69 empleados negociaron entre sí usando agentes Claude. Los que tenían modelo más potente conseguían objetivamente mejores precios. <strong>Los del modelo débil no se daban cuenta de su desventaja.</strong>
+  </div>
+
+  <p style="color:var(--muted); margin-top:12px;" data-i18n="why.body">En un marketplace público, esa asimetría es fatal: la gente con mejor LLM gana plata sin que el otro lo note. Otto invierte la arquitectura — la plataforma corre <strong>un solo modelo igual para todos</strong>. Mismo agente, mismas reglas, sin tier premium.</p>
+
+  <div class="compare">
+    <div class="traditional">
+      <h4 data-i18n="cmp.trad">Marketplaces tradicionales</h4>
+      <ul>
+        <li data-i18n="cmp.trad.1">Abrís 8 pestañas, comparás manual</li>
+        <li data-i18n="cmp.trad.2">Charlas largas con vendedores</li>
+        <li data-i18n="cmp.trad.3">Spam, vendedores fantasma</li>
+        <li data-i18n="cmp.trad.4">Te perdés ofertas porque no estás conectado</li>
+      </ul>
+    </div>
+    <div class="otto">
+      <h4 data-i18n="cmp.otto">Otto</h4>
+      <ul>
+        <li data-i18n="cmp.otto.1">Definís rango una vez. Listo.</li>
+        <li data-i18n="cmp.otto.2">El agente negocia por vos</li>
+        <li data-i18n="cmp.otto.3">Mismo modelo para todos: cancha pareja</li>
+        <li data-i18n="cmp.otto.4">Notif solo cuando hay match real</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<section class="container" id="for-who">
+  <h2 data-i18n="who.title">¿Para quién es?</h2>
+  <p class="lead" data-i18n="who.lead">Si alguna vez pensaste "tengo esto y no quiero gastar 3 tardes vendiéndolo", otto es para vos.</p>
+  <div class="grid grid-2">
+    <div class="card">
+      <h3 data-i18n="who.1.t">Vendedores casuales</h3>
+      <p data-i18n="who.1.b">Tenés algo en el placard que no usás. Subís foto, definís rango, olvidate. El agente avisa cuando alguien quiera pagarlo.</p>
+    </div>
+    <div class="card">
+      <h3 data-i18n="who.2.t">Compradores con criterio</h3>
+      <p data-i18n="who.2.b">Sabés lo que querés y cuánto pagás. El agente te avisa cuando aparezca a buen precio, sin que tengas que monitorear.</p>
+    </div>
+    <div class="card">
+      <h3 data-i18n="who.3.t">Trueques</h3>
+      <p data-i18n="who.3.b">Tu bicicleta por su monitor. El agente busca el match perfecto entre cientos de items y te lo propone.</p>
+    </div>
+    <div class="card">
+      <h3 data-i18n="who.4.t">Curiosos del agent commerce</h3>
+      <p data-i18n="who.4.b">Si te interesa el experimento de mercados mediados por IA en producción real, otto es el primer caso público.</p>
+    </div>
+  </div>
+</section>
+
+<section class="container" id="faq">
+  <h2 data-i18n="faq.title">Preguntas frecuentes</h2>
+  <p class="lead" data-i18n="faq.lead">Lo que probablemente te estás preguntando.</p>
+
+  <details>
+    <summary data-i18n="faq.q1">¿El agente puede cerrar un trato sin mi permiso?</summary>
+    <p data-i18n="faq.a1">No. El agente <em>propone</em>, vos <em>aceptás</em>. Cada match queda en tu inbox con un botón explícito de aceptar/rechazar. Nada se concreta sin un tap tuyo.</p>
+  </details>
+
+  <details>
+    <summary data-i18n="faq.q2">¿Qué pasa si el agente sugiere un precio muy por debajo del mercado?</summary>
+    <p data-i18n="faq.a2">El agente consulta referencias de precios públicos antes de proponer. Igual, vos definís un rango mínimo cuando publicás — el agente nunca propondrá nada bajo ese piso. Es tu valla.</p>
+  </details>
+
+  <details>
+    <summary data-i18n="faq.q3">¿Quién paga el costo del LLM?</summary>
+    <p data-i18n="faq.a3">La plataforma. Es parte del costo operativo, como hosting o pasarela de pagos. Por eso el modelo es uno solo y para todos: si cada usuario pagara su propio LLM, los que más invierten ganarían más, replicando el problema que detectó Anthropic.</p>
+  </details>
+
+  <details>
+    <summary data-i18n="faq.q4">¿Cómo se manejan los pagos y entregas?</summary>
+    <p data-i18n="faq.a4">v0.1 es coordinación de match: el agente conecta a las dos partes y propone un precio. Pago y entrega se acuerdan offline (cash, transferencia, encuentro). v0.2 va a sumar escrow opcional vía Stripe + reputación pública por usuario.</p>
+  </details>
+
+  <details>
+    <summary data-i18n="faq.q5">¿Qué evita que la gente publique cosas falsas o spam?</summary>
+    <p data-i18n="faq.a5">El agente filtra y ordena, pero un sistema de moderación + reputación es parte de v0.2. Por ahora: cola de admin que revisa publicaciones marcadas. A largo plazo: reputación cruzada por trato cerrado.</p>
+  </details>
+
+  <details>
+    <summary data-i18n="faq.q6">¿Cuánto tarda en aparecer un match?</summary>
+    <p data-i18n="faq.a6">El agente corre cada 5 minutos por defecto. Si hay listings compatibles ya en la base, vas a ver matches en menos de 5 min de publicar. Si no hay nada compatible aún, el agente sigue escaneando — apenas aparezca, te llega.</p>
+  </details>
+
+  <details>
+    <summary data-i18n="faq.q7">¿Es seguro? ¿Qué pasa con mis datos?</summary>
+    <p data-i18n="faq.a7">El agente solo ve los datos públicos de tus listings (título, descripción, rango). Nunca tu email, contraseña ni datos personales. Sesiones encriptadas, contraseñas hasheadas con bcrypt, MongoDB con conexión TLS.</p>
+  </details>
+
+  <details>
+    <summary data-i18n="faq.q8">¿Por qué se llama otto?</summary>
+    <p data-i18n="faq.a8">Por <em>auto</em> y por el guiño a tener un asistente con nombre propio. Corto, fonético, fácil de recordar. Como si tuvieras un amigo que te ayuda a vender cosas.</p>
+  </details>
+
+  <details>
+    <summary data-i18n="faq.q9">¿Es open source?</summary>
+    <p data-i18n="faq.a9">Sí. Código completo en <a href="https://github.com/missingus3r/otto">GitHub</a>, licencia MIT. Podés correr tu propia instancia o contribuir.</p>
+  </details>
+</section>
+
+<section class="container" id="cta-final" style="text-align:center; padding: 64px 20px;">
+  <h2 data-i18n="finalcta.title">¿Te interesa probarlo?</h2>
+  <p class="lead" data-i18n="finalcta.lead">El proyecto está en alpha temprano. Mirá el repo, abrí un issue con feedback, o levantá tu propia instancia.</p>
+  <div class="cta-group">
+    <a class="btn btn-primary" href="https://github.com/missingus3r/otto" style="background:var(--accent); color:white;" data-i18n="finalcta.gh">Ver código</a>
+    <a class="btn btn-secondary" href="#" style="background:var(--card); color:var(--fg); border:1px solid var(--border);" data-i18n="finalcta.beta">Sumarme al beta</a>
+  </div>
+</section>
+
+<footer>
+  <p>otto · agent-mediated marketplace · MIT</p>
+  <p>Inspirado por <a href="https://www.anthropic.com/features/project-deal">Anthropic Project Deal</a> · <a href="https://github.com/missingus3r/otto">GitHub</a></p>
+</footer>
+
+<script>
+  // Tiny i18n: translations + lang switcher
+  const T = {
+    es: {
+      "badge": "Inspirado por Anthropic Project Deal",
+      "hero.title": "Negociá más inteligente.<br>Dejá que el agente hable.",
+      "hero.subtitle": "Publicás lo que querés vender, comprar o intercambiar. Un agente IA recorre el mercado por vos y te avisa solo cuando hay un trato que vale la pena.",
+      "cta.primary": "Ver en GitHub",
+      "cta.secondary": "Cómo funciona",
+      "what.title": "¿Qué resuelve otto?",
+      "what.lead": "El problema con los marketplaces actuales no es que no haya ofertas — es el ruido. Buscar, regatear, contestar mensajes, comparar precios. Otto se mete en el medio y hace todo eso por vos.",
+      "what.f1.t": "Cero búsquedas",
+      "what.f1.b": "No abrís 8 pestañas para comparar precios. El agente lo hace en segundos.",
+      "what.f2.t": "Cero charlas tediosas",
+      "what.f2.b": "El agente regatea por vos. Vos solo decidís si aceptás o no.",
+      "what.f3.t": "Te llegan los buenos deals",
+      "what.f3.b": "Sin scrolling infinito. Te avisamos cuando algo encaja con tu rango.",
+      "how.title": "¿Cómo funciona?",
+      "how.lead": "Tres pasos. Sin curva de aprendizaje.",
+      "how.s1.t": "Publicás con un rango",
+      "how.s1.b": "Subís foto y descripción. En vez de un precio fijo, definís un rango (mínimo aceptable y techo). Si querés intercambiar por otro item, lo describís.",
+      "how.s2.t": "El agente recorre el mercado",
+      "how.s2.b": "Cada pocos minutos, un único modelo IA escanea todas las publicaciones abiertas, busca compatibilidades, consulta precios de referencia y propone matches con un razonamiento explícito.",
+      "how.s3.t": "Vos aceptás o rechazás",
+      "how.s3.b": "Te llega el match a tu inbox con score, precio sugerido y la justificación del agente. Un tap para aceptar. Nada se cierra sin tu aprobación.",
+      "why.title": "¿Por qué un solo modelo para todos?",
+      "why.lead": "Porque la alternativa, agentes separados por usuario, ya se probó — y reveló un problema serio.",
+      "why.body": "En un marketplace público, esa asimetría es fatal: la gente con mejor LLM gana plata sin que el otro lo note. Otto invierte la arquitectura — la plataforma corre <strong>un solo modelo igual para todos</strong>. Mismo agente, mismas reglas, sin tier premium.",
+      "cmp.trad": "Marketplaces tradicionales",
+      "cmp.trad.1": "Abrís 8 pestañas, comparás manual",
+      "cmp.trad.2": "Charlas largas con vendedores",
+      "cmp.trad.3": "Spam, vendedores fantasma",
+      "cmp.trad.4": "Te perdés ofertas porque no estás conectado",
+      "cmp.otto": "Otto",
+      "cmp.otto.1": "Definís rango una vez. Listo.",
+      "cmp.otto.2": "El agente negocia por vos",
+      "cmp.otto.3": "Mismo modelo para todos: cancha pareja",
+      "cmp.otto.4": "Notif solo cuando hay match real",
+      "who.title": "¿Para quién es?",
+      "who.lead": "Si alguna vez pensaste \"tengo esto y no quiero gastar 3 tardes vendiéndolo\", otto es para vos.",
+      "who.1.t": "Vendedores casuales",
+      "who.1.b": "Tenés algo en el placard que no usás. Subís foto, definís rango, olvidate. El agente avisa cuando alguien quiera pagarlo.",
+      "who.2.t": "Compradores con criterio",
+      "who.2.b": "Sabés lo que querés y cuánto pagás. El agente te avisa cuando aparezca a buen precio, sin que tengas que monitorear.",
+      "who.3.t": "Trueques",
+      "who.3.b": "Tu bicicleta por su monitor. El agente busca el match perfecto entre cientos de items y te lo propone.",
+      "who.4.t": "Curiosos del agent commerce",
+      "who.4.b": "Si te interesa el experimento de mercados mediados por IA en producción real, otto es el primer caso público.",
+      "faq.title": "Preguntas frecuentes",
+      "faq.lead": "Lo que probablemente te estás preguntando.",
+      "faq.q1": "¿El agente puede cerrar un trato sin mi permiso?",
+      "faq.a1": "No. El agente <em>propone</em>, vos <em>aceptás</em>. Cada match queda en tu inbox con un botón explícito de aceptar/rechazar. Nada se concreta sin un tap tuyo.",
+      "faq.q2": "¿Qué pasa si el agente sugiere un precio muy por debajo del mercado?",
+      "faq.a2": "El agente consulta referencias de precios públicos antes de proponer. Igual, vos definís un rango mínimo cuando publicás — el agente nunca propondrá nada bajo ese piso. Es tu valla.",
+      "faq.q3": "¿Quién paga el costo del LLM?",
+      "faq.a3": "La plataforma. Es parte del costo operativo, como hosting o pasarela de pagos. Por eso el modelo es uno solo y para todos: si cada usuario pagara su propio LLM, los que más invierten ganarían más, replicando el problema que detectó Anthropic.",
+      "faq.q4": "¿Cómo se manejan los pagos y entregas?",
+      "faq.a4": "v0.1 es coordinación de match: el agente conecta a las dos partes y propone un precio. Pago y entrega se acuerdan offline (cash, transferencia, encuentro). v0.2 va a sumar escrow opcional vía Stripe + reputación pública por usuario.",
+      "faq.q5": "¿Qué evita que la gente publique cosas falsas o spam?",
+      "faq.a5": "El agente filtra y ordena, pero un sistema de moderación + reputación es parte de v0.2. Por ahora: cola de admin que revisa publicaciones marcadas. A largo plazo: reputación cruzada por trato cerrado.",
+      "faq.q6": "¿Cuánto tarda en aparecer un match?",
+      "faq.a6": "El agente corre cada 5 minutos por defecto. Si hay listings compatibles ya en la base, vas a ver matches en menos de 5 min de publicar. Si no hay nada compatible aún, el agente sigue escaneando — apenas aparezca, te llega.",
+      "faq.q7": "¿Es seguro? ¿Qué pasa con mis datos?",
+      "faq.a7": "El agente solo ve los datos públicos de tus listings (título, descripción, rango). Nunca tu email, contraseña ni datos personales. Sesiones encriptadas, contraseñas hasheadas con bcrypt, MongoDB con conexión TLS.",
+      "faq.q8": "¿Por qué se llama otto?",
+      "faq.a8": "Por <em>auto</em> y por el guiño a tener un asistente con nombre propio. Corto, fonético, fácil de recordar. Como si tuvieras un amigo que te ayuda a vender cosas.",
+      "faq.q9": "¿Es open source?",
+      "faq.a9": "Sí. Código completo en <a href=\"https://github.com/missingus3r/otto\">GitHub</a>, licencia MIT. Podés correr tu propia instancia o contribuir.",
+      "finalcta.title": "¿Te interesa probarlo?",
+      "finalcta.lead": "El proyecto está en alpha temprano. Mirá el repo, abrí un issue con feedback, o levantá tu propia instancia.",
+      "finalcta.gh": "Ver código",
+      "finalcta.beta": "Sumarme al beta"
+    },
+    pt: {
+      "badge": "Inspirado em Anthropic Project Deal",
+      "hero.title": "Negocie de forma mais inteligente.<br>Deixe o agente falar.",
+      "hero.subtitle": "Você publica o que quer vender, comprar ou trocar. Um agente IA percorre o mercado por você e avisa só quando há um trato que vale a pena.",
+      "cta.primary": "Ver no GitHub",
+      "cta.secondary": "Como funciona",
+      "what.title": "O que o otto resolve?",
+      "what.lead": "O problema com os marketplaces atuais não é a falta de ofertas — é o ruído. Buscar, regatear, responder mensagens, comparar preços. Otto se mete no meio e faz tudo isso por você.",
+      "what.f1.t": "Zero buscas",
+      "what.f1.b": "Não abre 8 abas para comparar preços. O agente faz em segundos.",
+      "what.f2.t": "Zero conversas tediosas",
+      "what.f2.b": "O agente regateia por você. Você só decide se aceita.",
+      "what.f3.t": "Recebe os bons deals",
+      "what.f3.b": "Sem scroll infinito. Avisamos quando algo encaixa.",
+      "how.title": "Como funciona?",
+      "how.lead": "Três passos. Sem curva de aprendizado.",
+      "how.s1.t": "Publica com uma faixa",
+      "how.s1.b": "Sobe foto e descrição. Em vez de preço fixo, define faixa (mínimo aceitável e teto). Se quer trocar por outro item, descreve.",
+      "how.s2.t": "O agente percorre o mercado",
+      "how.s2.b": "A cada poucos minutos, um único modelo IA escaneia todas as publicações abertas, busca compatibilidades, consulta preços de referência e propõe matches com raciocínio explícito.",
+      "how.s3.t": "Você aceita ou rejeita",
+      "how.s3.b": "O match chega à sua inbox com score, preço sugerido e justificativa. Um toque para aceitar. Nada fecha sem aprovação.",
+      "why.title": "Por que um só modelo para todos?",
+      "why.lead": "Porque a alternativa, agentes separados por usuário, já foi testada — e revelou um problema sério.",
+      "why.body": "Num marketplace público essa assimetria é fatal: quem tem LLM melhor ganha sem que o outro perceba. Otto inverte a arquitetura — a plataforma roda <strong>um único modelo igual para todos</strong>.",
+      "cmp.trad": "Marketplaces tradicionais",
+      "cmp.trad.1": "Abre 8 abas, compara manual",
+      "cmp.trad.2": "Conversas longas com vendedores",
+      "cmp.trad.3": "Spam, vendedores fantasma",
+      "cmp.trad.4": "Perde ofertas por não estar online",
+      "cmp.otto": "Otto",
+      "cmp.otto.1": "Define faixa uma vez. Pronto.",
+      "cmp.otto.2": "O agente negocia por você",
+      "cmp.otto.3": "Mesmo modelo para todos: cancha pareja",
+      "cmp.otto.4": "Notif só quando há match real",
+      "who.title": "Para quem é?",
+      "who.lead": "Se já pensou \"tenho isto e não quero perder 3 tardes vendendo\", otto é para você.",
+      "who.1.t": "Vendedores casuais",
+      "who.1.b": "Tem algo no armário que não usa. Sobe foto, define faixa, esquece. O agente avisa.",
+      "who.2.t": "Compradores com critério",
+      "who.2.b": "Sabe o que quer e quanto paga. O agente avisa quando aparecer.",
+      "who.3.t": "Trocas",
+      "who.3.b": "Sua bike pelo monitor dele. O agente busca o match perfeito.",
+      "who.4.t": "Curiosos sobre agent commerce",
+      "who.4.b": "Se te interessa o experimento de mercados mediados por IA em produção, otto é o primeiro caso público.",
+      "faq.title": "Perguntas frequentes",
+      "faq.lead": "O que provavelmente você está se perguntando.",
+      "faq.q1": "O agente pode fechar um trato sem minha permissão?",
+      "faq.a1": "Não. O agente <em>propõe</em>, você <em>aceita</em>. Cada match fica na inbox com botão de aceitar/rejeitar. Nada concretiza sem um toque seu.",
+      "faq.q2": "E se o agente sugerir preço bem abaixo do mercado?",
+      "faq.a2": "O agente consulta referências de preços públicos antes de propor. Mesmo assim, você define uma faixa mínima — o agente nunca proporá nada abaixo desse piso.",
+      "faq.q3": "Quem paga o custo do LLM?",
+      "faq.a3": "A plataforma. Faz parte do custo operacional. Por isso é um só modelo para todos — se cada usuário pagasse o próprio LLM, repetiríamos o problema que a Anthropic detectou.",
+      "faq.q4": "Como funcionam pagamentos e entregas?",
+      "faq.a4": "v0.1 é coordenação de match: o agente conecta as duas partes e propõe preço. Pagamento e entrega se combinam offline. v0.2 incluirá escrow via Stripe + reputação pública.",
+      "faq.q5": "O que evita que postem coisas falsas ou spam?",
+      "faq.a5": "O agente filtra e ordena, mas moderação + reputação é parte da v0.2. Por enquanto: fila de admin para itens marcados. A longo prazo: reputação cruzada por trato fechado.",
+      "faq.q6": "Quanto demora aparecer um match?",
+      "faq.a6": "O agente roda a cada 5 minutos. Se já houver listings compatíveis na base, vê matches em menos de 5 min após publicar. Se não, segue escaneando.",
+      "faq.q7": "É seguro? E meus dados?",
+      "faq.a7": "O agente só vê os dados públicos do listing (título, descrição, faixa). Nunca seu email, senha ou dados pessoais. Sessões criptografadas, senhas com bcrypt, MongoDB com TLS.",
+      "faq.q8": "Por que se chama otto?",
+      "faq.a8": "Por <em>auto</em> e pelo gesto de ter um assistente com nome próprio. Curto, fonético, fácil de lembrar. Como ter um amigo que te ajuda a vender coisas.",
+      "faq.q9": "É open source?",
+      "faq.a9": "Sim. Código completo no <a href=\"https://github.com/missingus3r/otto\">GitHub</a>, licença MIT. Pode rodar sua própria instância ou contribuir.",
+      "finalcta.title": "Quer testar?",
+      "finalcta.lead": "O projeto está em alpha. Veja o repo, abra issue com feedback, ou suba sua própria instância.",
+      "finalcta.gh": "Ver código",
+      "finalcta.beta": "Entrar no beta"
+    },
+    en: {
+      "badge": "Inspired by Anthropic Project Deal",
+      "hero.title": "Trade smarter.<br>Let the agent talk.",
+      "hero.subtitle": "Post what you want to sell, buy, or swap. An AI agent works the market for you and only pings you when there's a deal worth taking.",
+      "cta.primary": "View on GitHub",
+      "cta.secondary": "How it works",
+      "what.title": "What does otto solve?",
+      "what.lead": "The problem with current marketplaces isn't lack of offers — it's the noise. Searching, haggling, replying messages, comparing prices. Otto sits in the middle and does all that for you.",
+      "what.f1.t": "Zero searching",
+      "what.f1.b": "No more 8 tabs comparing prices. The agent does it in seconds.",
+      "what.f2.t": "Zero tedious chats",
+      "what.f2.b": "The agent haggles for you. You just decide accept or not.",
+      "what.f3.t": "Good deals find you",
+      "what.f3.b": "No infinite scroll. We ping you when something fits your range.",
+      "how.title": "How it works",
+      "how.lead": "Three steps. No learning curve.",
+      "how.s1.t": "Post with a range",
+      "how.s1.b": "Upload photo and description. Instead of a fixed price, set a range (floor and ceiling). Or describe what you'd like to swap for.",
+      "how.s2.t": "The agent works the market",
+      "how.s2.b": "Every few minutes a single AI model scans every open listing, finds compatible matches, checks reference prices, and proposes deals with explicit reasoning.",
+      "how.s3.t": "You accept or reject",
+      "how.s3.b": "The match arrives in your inbox with score, suggested price, and the agent's rationale. One tap to accept. Nothing closes without your approval.",
+      "why.title": "Why one model for everybody?",
+      "why.lead": "Because the alternative — separate agents per user — has been tested, and it surfaced a serious problem.",
+      "why.body": "In a public marketplace that asymmetry is fatal: people with stronger LLMs win money the other side never notices. Otto flips the architecture — the platform runs <strong>one shared model for everyone</strong>.",
+      "cmp.trad": "Traditional marketplaces",
+      "cmp.trad.1": "8 tabs open, comparing manually",
+      "cmp.trad.2": "Long chats with sellers",
+      "cmp.trad.3": "Spam, ghost sellers",
+      "cmp.trad.4": "You miss deals when offline",
+      "cmp.otto": "Otto",
+      "cmp.otto.1": "Set range once. Done.",
+      "cmp.otto.2": "The agent negotiates for you",
+      "cmp.otto.3": "Same model for all: level field",
+      "cmp.otto.4": "Notif only on real matches",
+      "who.title": "Who is it for?",
+      "who.lead": "If you ever thought \"I have this and don't want to spend 3 afternoons selling it\", otto is for you.",
+      "who.1.t": "Casual sellers",
+      "who.1.b": "Got something in the closet you don't use. Upload, set range, forget. The agent pings when buyers show up.",
+      "who.2.t": "Discerning buyers",
+      "who.2.b": "You know what you want and what you'll pay. The agent pings when it appears at a fair price.",
+      "who.3.t": "Swappers",
+      "who.3.b": "Your bike for their monitor. The agent finds the perfect cross-match across hundreds of items.",
+      "who.4.t": "Agent commerce curious",
+      "who.4.b": "If you're interested in AI-mediated markets in production, otto is the first public case.",
+      "faq.title": "FAQ",
+      "faq.lead": "What you're probably wondering.",
+      "faq.q1": "Can the agent close a deal without my permission?",
+      "faq.a1": "No. The agent <em>proposes</em>, you <em>accept</em>. Each match sits in your inbox with an explicit accept/reject button. Nothing closes without your tap.",
+      "faq.q2": "What if the agent suggests a price way below market?",
+      "faq.a2": "The agent checks public price references before proposing. Plus, you set a minimum range when you post — the agent will never propose anything under that floor.",
+      "faq.q3": "Who pays the LLM cost?",
+      "faq.a3": "The platform does. It's part of operating cost, like hosting or payment processing. That's why it's one model for everyone — if each user paid their own LLM, the wealthier ones would consistently win, replicating Anthropic's finding.",
+      "faq.q4": "How do payments and delivery work?",
+      "faq.a4": "v0.1 is match coordination only: the agent connects both parties and proposes a price. Payment and delivery happen offline. v0.2 will add optional Stripe escrow + public per-user reputation.",
+      "faq.q5": "What stops people from posting fake stuff or spam?",
+      "faq.a5": "The agent filters and ranks, but moderation + reputation are part of v0.2. For now: admin queue reviewing flagged listings. Long-term: cross-reputation per closed deal.",
+      "faq.q6": "How long until a match appears?",
+      "faq.a6": "Agent runs every 5 minutes by default. If compatible listings already exist, you'll see matches within 5 min of posting. Otherwise the agent keeps scanning — as soon as a match appears, you get pinged.",
+      "faq.q7": "Is it safe? What about my data?",
+      "faq.a7": "The agent only sees public listing data (title, description, range). Never your email, password, or personal data. Encrypted sessions, bcrypt-hashed passwords, MongoDB over TLS.",
+      "faq.q8": "Why is it called otto?",
+      "faq.a8": "From <em>auto</em> and the nod to having an assistant with its own name. Short, phonetic, easy to remember. Like having a friend who helps you sell stuff.",
+      "faq.q9": "Is it open source?",
+      "faq.a9": "Yes. Full code on <a href=\"https://github.com/missingus3r/otto\">GitHub</a>, MIT license. Run your own instance or contribute.",
+      "finalcta.title": "Want to try it?",
+      "finalcta.lead": "Project is in early alpha. Browse the repo, open an issue with feedback, or spin up your own instance.",
+      "finalcta.gh": "View code",
+      "finalcta.beta": "Join the beta"
+    }
+  };
+
+  function applyLang(lang) {
+    if (!T[lang]) lang = 'es';
+    document.documentElement.lang = lang;
+    document.querySelectorAll('[data-i18n]').forEach(el => {
+      const key = el.getAttribute('data-i18n');
+      if (T[lang][key] !== undefined) el.innerHTML = T[lang][key];
+    });
+    document.querySelectorAll('.lang-switch button').forEach(b => {
+      b.classList.toggle('active', b.getAttribute('data-lang') === lang);
+    });
+    try { localStorage.setItem('otto-lang', lang); } catch(e){}
+  }
+
+  document.querySelectorAll('.lang-switch button').forEach(b => {
+    b.addEventListener('click', () => applyLang(b.getAttribute('data-lang')));
+  });
+
+  // initial: localStorage > navigator > es
+  let initial = 'es';
+  try {
+    const saved = localStorage.getItem('otto-lang');
+    if (saved && T[saved]) initial = saved;
+    else {
+      const nav = (navigator.language || 'es').slice(0, 2).toLowerCase();
+      if (T[nav]) initial = nav;
+    }
+  } catch(e){}
+  applyLang(initial);
+</script>
+
+</body>
+</html>
