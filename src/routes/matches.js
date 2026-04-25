@@ -5,6 +5,7 @@ import Match from '../models/Match.js';
 import Listing from '../models/Listing.js';
 import Transaction from '../models/Transaction.js';
 import LedgerEntry from '../models/LedgerEntry.js';
+import Review from '../models/Review.js';
 
 const router = express.Router();
 router.use(requireAuth);
@@ -23,7 +24,39 @@ router.get('/', async (req, res, next) => {
       .populate('listingB')
       .lean();
 
-    res.render('app/matches', { matches, myIds: ids.map(String) });
+    // Build a map matchId → { txId, completed, reviewLeft } so the view can
+    // surface a "Dejar reseña" button on completed transactions where this
+    // user has not yet reviewed.
+    const matchIds = matches.map((m) => m._id);
+    const txs = await Transaction.find({ matchId: { $in: matchIds } })
+      .select('_id matchId status')
+      .lean();
+    const txByMatch = {};
+    for (const tx of txs) txByMatch[String(tx.matchId)] = tx;
+
+    const reviewedTxIds = new Set();
+    if (txs.length) {
+      const myReviews = await Review.find({
+        fromUserId: req.user._id,
+        transactionId: { $in: txs.map((t) => t._id) },
+      })
+        .select('transactionId')
+        .lean();
+      for (const r of myReviews) reviewedTxIds.add(String(r.transactionId));
+    }
+
+    const reviewInfo = {};
+    for (const m of matches) {
+      const tx = txByMatch[String(m._id)];
+      if (!tx) continue;
+      reviewInfo[String(m._id)] = {
+        transactionId: String(tx._id),
+        completed: tx.status === 'completed',
+        reviewed: reviewedTxIds.has(String(tx._id)),
+      };
+    }
+
+    res.render('app/matches', { matches, myIds: ids.map(String), reviewInfo });
   } catch (err) {
     next(err);
   }

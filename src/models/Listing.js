@@ -10,12 +10,21 @@ const listingSchema = new mongoose.Schema({
   currency: { type: String, default: 'UYU' },
   swapForDescription: { type: String, default: '' },
   photoPath: { type: String, default: '' },
+  thumbPath: { type: String, default: null },
   status: {
     type: String,
     enum: ['open', 'matched', 'closed', 'cancelled'],
     default: 'open',
   },
   tags: [{ type: String }],
+  flagged: { type: Boolean, default: false },
+  flaggedAt: { type: Date },
+  flagReason: { type: String, default: '' },
+  moderationStatus: {
+    type: String,
+    enum: ['pending', 'approved', 'rejected'],
+    default: 'approved',
+  },
   createdAt: { type: Date, default: Date.now },
   updatedAt: { type: Date, default: Date.now },
 });

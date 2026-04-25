@@ -1,0 +1,50 @@
+<%- include('../partials/header', { pageTitle: t('admin.moderation') }) %>
+<%- include('../partials/nav') %>
+
+<a class="muted" href="/admin">← <%= t('common.back') %></a>
+<h1 class="section-title" style="margin-top:8px"><%= t('admin.moderation') %></h1>
+
+<% if (!listings || listings.length === 0) { %>
+  <div class="card muted"><%= t('admin.moderation.empty') %></div>
+<% } else { %>
+  <% listings.forEach(function(l) { %>
+    <div class="card">
+      <div class="row between">
+        <strong><a href="/listings/<%= l._id %>"><%= l.title %></a></strong>
+        <span>
+          <% if (l.moderationStatus === 'pending') { %>
+            <span class="pill cancelled"><%= t('moderation.pending') %></span>
+          <% } %>
+          <% if (l.flagged) { %>
+            <span class="pill cancelled"><%= t('moderation.flagged') %></span>
+          <% } %>
+        </span>
+      </div>
+      <div class="muted" style="font-size:0.85rem;margin-top:4px;">
+        <span class="pill <%= l.type %>"><%= t('listings.type.' + l.type) %></span>
+        · <%= l.priceMin %>–<%= l.priceMax %> <%= l.currency %>
+        · <%= l.userId ? (l.userId.displayName || l.userId.email) : '—' %>
+        · <%= new Date(l.createdAt).toLocaleString() %>
+      </div>
+      <% if (l.description) { %>
+        <p style="margin-top:8px;"><%= l.description %></p>
+      <% } %>
+      <% if (l.flagReason) { %>
+        <div class="muted" style="font-size:0.85rem;">
+          <strong><%= t('moderation.reason') %>:</strong> <%= l.flagReason %>
+        </div>
+      <% } %>
+
+      <div class="btn-row" style="margin-top:10px;">
+        <form action="/admin/listings/<%= l._id %>/approve" method="post" style="flex:1;">
+          <button class="btn block" type="submit"><%= t('admin.moderation.approve') %></button>
+        </form>
+        <form action="/admin/listings/<%= l._id %>/reject" method="post" style="flex:1;" data-confirm="<%= t('admin.moderation.reject') %>?">
+          <button class="btn danger block" type="submit"><%= t('admin.moderation.reject') %></button>
+        </form>
+      </div>
+    </div>
+  <% }); %>
+<% } %>
+
+<%- include('../partials/footer') %>

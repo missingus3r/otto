@@ -7,17 +7,24 @@
   <a class="btn" href="/listings/new">+ <%= t('listings.new') %></a>
 </div>
 
+<% function imgFor(l) { return l.thumbPath || l.photoPath || ''; } %>
+
 <% if (!mine || mine.length === 0) { %>
   <div class="card muted"><%= t('listings.empty') %></div>
 <% } else { %>
-  <% mine.forEach(function(l) { %>
+  <% mine.forEach(function(l) { var img = imgFor(l); %>
     <a class="listing-row" href="/listings/<%= l._id %>">
-      <div class="thumb"<% if (l.photoPath) { %> style="background-image:url('<%= l.photoPath %>')"<% } %>></div>
+      <div class="thumb"<% if (img) { %> style="background-image:url('<%= img %>')"<% } %>></div>
       <div class="info">
         <h4><%= l.title %></h4>
         <div class="meta">
           <span class="pill <%= l.type %>"><%= t('listings.type.' + l.type) %></span>
           <span class="pill <%= l.status %>"><%= t('listings.status.' + l.status) %></span>
+          <% if (l.moderationStatus === 'pending') { %>
+            <span class="pill cancelled"><%= t('moderation.pending') %></span>
+          <% } else if (l.moderationStatus === 'rejected') { %>
+            <span class="pill cancelled"><%= t('moderation.rejected') %></span>
+          <% } %>
           <% if (l.type !== 'swap') { %>
             <span><%= l.priceMin %>–<%= l.priceMax %> <%= l.currency %></span>
           <% } %>
@@ -31,9 +38,9 @@
 <% if (!explore || explore.length === 0) { %>
   <div class="card muted"><%= t('listings.exploreEmpty') %></div>
 <% } else { %>
-  <% explore.forEach(function(l) { %>
+  <% explore.forEach(function(l) { var img = imgFor(l); %>
     <a class="listing-row" href="/listings/<%= l._id %>">
-      <div class="thumb"<% if (l.photoPath) { %> style="background-image:url('<%= l.photoPath %>')"<% } %>></div>
+      <div class="thumb"<% if (img) { %> style="background-image:url('<%= img %>')"<% } %>></div>
       <div class="info">
         <h4><%= l.title %></h4>
         <div class="meta">

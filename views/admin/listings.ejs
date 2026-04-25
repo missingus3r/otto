@@ -17,9 +17,12 @@
       </tr>
     </thead>
     <tbody>
-      <% listings.forEach(function(l) { %>
+      <% listings.forEach(function(l) { var img = l.thumbPath || l.photoPath || ''; %>
         <tr>
-          <td><a href="/listings/<%= l._id %>"><%= l.title %></a></td>
+          <td>
+            <% if (img) { %><img src="<%= img %>" alt="" style="width:32px;height:32px;object-fit:cover;border-radius:4px;vertical-align:middle;margin-right:6px;"><% } %>
+            <a href="/listings/<%= l._id %>"><%= l.title %></a>
+          </td>
           <td><span class="pill <%= l.type %>"><%= t('listings.type.' + l.type) %></span></td>
           <td><span class="pill <%= l.status %>"><%= t('listings.status.' + l.status) %></span></td>
           <td><%= l.priceMin %>–<%= l.priceMax %> <%= l.currency %></td>

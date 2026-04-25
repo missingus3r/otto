@@ -6,8 +6,11 @@ import Match from '../models/Match.js';
 import AgentLog from '../models/AgentLog.js';
 import LedgerEntry from '../models/LedgerEntry.js';
 import { matchListings } from './llm.js';
+import { getMarketBaseline } from './priceScraper.js';
+import { notifyUser } from './push.js';
 
 const BATCH_SIZE = 30;
+const PRICE_SCRAPE_ENABLED = process.env.PRICE_SCRAPE_ENABLED === 'true';
 
 // in-memory pause flag — admin can flip via /admin/agent/pause
 let _paused = false;
@@ -43,6 +46,26 @@ async function existsMatch(aId, bId) {
   return !!found;
 }
 
+// Enrich each listing with a marketReference (median, samples, source) by
+// hitting the public scraper. Runs in parallel; failures degrade to null.
+async function enrichWithMarket(listings) {
+  if (!PRICE_SCRAPE_ENABLED) return listings;
+  const enriched = await Promise.all(
+    listings.map(async (l) => {
+      // skip swaps — no monetary baseline relevant.
+      if (l.type === 'swap') return l;
+      try {
+        const baseline = await getMarketBaseline(l.title, l.currency || 'UYU');
+        return { ...l, marketReference: baseline };
+      } catch (err) {
+        console.warn('[priceScraper] enrich failed:', err.message);
+        return l;
+      }
+    })
+  );
+  return enriched;
+}
+
 export async function runOnce() {
   if (_running) {
     console.log('[agent] previous run still in progress — skipping');
@@ -64,7 +87,10 @@ export async function runOnce() {
   let errMsg = '';
 
   try {
-    const openListings = await Listing.find({ status: 'open' }).lean();
+    const openListings = await Listing.find({
+      status: 'open',
+      moderationStatus: { $nin: ['pending', 'rejected'] },
+    }).lean();
     listingsScanned = openListings.length;
 
     if (listingsScanned < 2) {
@@ -77,9 +103,12 @@ export async function runOnce() {
       );
 
       for (const batch of chunk(openListings, BATCH_SIZE)) {
+        // Inject market baselines (parallel; gated by env).
+        const enrichedBatch = await enrichWithMarket(batch);
+
         let result;
         try {
-          result = await matchListings(batch);
+          result = await matchListings(enrichedBatch);
         } catch (err) {
           console.error('[agent] llm batch failed:', err.message);
           continue;
@@ -115,6 +144,28 @@ export async function runOnce() {
               runId,
             },
           });
+
+          // Push notify both owners. Wrapped in try/catch — agent must NOT
+          // crash if push fails for any reason.
+          try {
+            const shortRationale =
+              (created.agentRationale || '').slice(0, 140) || 'Hay un nuevo match para tu publicación.';
+            const payload = {
+              title: 'Nuevo match en otto',
+              body: shortRationale,
+              url: '/matches',
+            };
+            await Promise.all([
+              notifyUser(a.userId, payload).catch((e) =>
+                console.error('[push] notify A failed:', e.message)
+              ),
+              notifyUser(b.userId, payload).catch((e) =>
+                console.error('[push] notify B failed:', e.message)
+              ),
+            ]);
+          } catch (pushErr) {
+            console.error('[push] notification block failed:', pushErr.message);
+          }
 
           matchesProposed += 1;
         }

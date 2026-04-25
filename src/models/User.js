@@ -24,4 +24,34 @@ userSchema.methods.comparePassword = async function (plain) {
   return bcrypt.compare(plain, this.passwordHash);
 };
 
+// Aggregate reputation from Review collection.
+// Returns { avgRating: number|null, count: number }.
+userSchema.methods.reputation = async function () {
+  // Lazy import to avoid circular references at model load time.
+  const Review = (await import('./Review.js')).default;
+  const agg = await Review.aggregate([
+    { $match: { toUserId: this._id } },
+    { $group: { _id: '$toUserId', avg: { $avg: '$rating' }, count: { $sum: 1 } } },
+  ]);
+  if (!agg.length) return { avgRating: null, count: 0 };
+  return {
+    avgRating: Math.round(agg[0].avg * 10) / 10,
+    count: agg[0].count,
+  };
+};
+
+// Same logic, callable statically by user id (for view helpers/profile pages).
+userSchema.statics.reputationFor = async function (userId) {
+  const Review = (await import('./Review.js')).default;
+  const agg = await Review.aggregate([
+    { $match: { toUserId: new mongoose.Types.ObjectId(String(userId)) } },
+    { $group: { _id: '$toUserId', avg: { $avg: '$rating' }, count: { $sum: 1 } } },
+  ]);
+  if (!agg.length) return { avgRating: null, count: 0 };
+  return {
+    avgRating: Math.round(agg[0].avg * 10) / 10,
+    count: agg[0].count,
+  };
+};
+
 export default mongoose.models.User || mongoose.model('User', userSchema);

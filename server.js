@@ -20,6 +20,8 @@ import listingsRoutes from './src/routes/listings.js';
 import matchesRoutes from './src/routes/matches.js';
 import profileRoutes from './src/routes/profile.js';
 import adminRoutes from './src/routes/admin.js';
+import reviewsRoutes from './src/routes/reviews.js';
+import pushRoutes from './src/routes/push.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -60,10 +62,14 @@ async function start() {
 
     const app = express();
 
-    // ensure uploads dir exists
+    // ensure uploads dirs exist (originals + thumbnails)
     const uploadsDir = path.join(__dirname, 'public', 'uploads');
     if (!fs.existsSync(uploadsDir)) {
       fs.mkdirSync(uploadsDir, { recursive: true });
+    }
+    const thumbsDir = path.join(uploadsDir, 'thumbs');
+    if (!fs.existsSync(thumbsDir)) {
+      fs.mkdirSync(thumbsDir, { recursive: true });
     }
 
     // security middleware — relaxed CSP so inline EJS scripts work without CDN.
@@ -141,6 +147,8 @@ async function start() {
     app.use('/matches', matchesRoutes);
     app.use('/profile', profileRoutes);
     app.use('/admin', adminRoutes);
+    app.use('/reviews', reviewsRoutes);
+    app.use('/push', pushRoutes);
 
     // 404
     app.use((req, res) => {

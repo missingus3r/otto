@@ -58,6 +58,18 @@
 </div>
 
 <div class="card">
+  <div class="row between">
+    <strong><%= t('admin.moderation') %></strong>
+    <span class="pill <%= counts.pendingModeration > 0 ? 'cancelled' : '' %>">
+      <%= counts.pendingModeration || 0 %>
+    </span>
+  </div>
+  <div class="btn-row" style="margin-top:10px;">
+    <a class="btn" href="/admin/moderation"><%= t('admin.moderation.review') %></a>
+  </div>
+</div>
+
+<div class="card">
   <h3>Navegación</h3>
   <div class="btn-row">
     <a class="btn ghost" href="/admin/users"><%= t('admin.users') %></a>
@@ -65,6 +77,7 @@
     <a class="btn ghost" href="/admin/transactions"><%= t('admin.transactions') %></a>
     <a class="btn ghost" href="/admin/ledger"><%= t('admin.ledger') %></a>
     <a class="btn ghost" href="/admin/agent-log"><%= t('admin.agentLog') %></a>
+    <a class="btn ghost" href="/admin/moderation"><%= t('admin.moderation') %></a>
   </div>
 </div>
 

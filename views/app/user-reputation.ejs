@@ -1,0 +1,12 @@
+<%
+  // Expects: reputation = { avgRating: number|null, count: number }
+  var rep = (typeof reputation !== 'undefined' && reputation) ? reputation : { avgRating: null, count: 0 };
+%>
+<% if (rep.count > 0) { %>
+  <span class="pill" title="<%= rep.count %> <%= t('review.left') %>">
+    ★ <%= rep.avgRating.toFixed(1) %>
+    <span class="muted">(<%= rep.count %>)</span>
+  </span>
+<% } else { %>
+  <span class="pill muted">★ <%= t('review.empty') %></span>
+<% } %>

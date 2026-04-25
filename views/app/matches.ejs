@@ -63,6 +63,15 @@
           </form>
         </div>
       <% } %>
+
+      <%
+        var info = (typeof reviewInfo !== 'undefined' && reviewInfo) ? reviewInfo[String(m._id)] : null;
+        if (info && info.completed && !info.reviewed) {
+      %>
+        <div style="margin-top:10px;">
+          <a class="btn ghost block" href="/reviews/new/<%= info.transactionId %>"><%= t('review.leave') %></a>
+        </div>
+      <% } %>
     </div>
   <% }); %>
 <% } %>

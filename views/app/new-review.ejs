@@ -1,0 +1,33 @@
+<%- include('../partials/header', { pageTitle: t('review.title') }) %>
+<%- include('../partials/nav', { activeNav: 'matches' }) %>
+<%- include('../partials/flash') %>
+
+<div class="form-card">
+  <h1><%= t('review.title') %></h1>
+
+  <% if (typeof error !== 'undefined' && error) { %>
+    <div class="error-msg"><%= error %></div>
+  <% } %>
+
+  <form action="/reviews" method="post">
+    <input type="hidden" name="transactionId" value="<%= tx._id %>">
+
+    <label for="rating"><%= t('review.rating') %></label>
+    <select id="rating" name="rating" required>
+      <option value="">—</option>
+      <option value="5">★★★★★ (5)</option>
+      <option value="4">★★★★☆ (4)</option>
+      <option value="3">★★★☆☆ (3)</option>
+      <option value="2">★★☆☆☆ (2)</option>
+      <option value="1">★☆☆☆☆ (1)</option>
+    </select>
+
+    <label for="comment"><%= t('review.comment') %> <span class="muted"><%= t('common.optional') %></span></label>
+    <textarea id="comment" name="comment" maxlength="500"></textarea>
+
+    <div class="spacer"></div>
+    <button class="btn block" type="submit"><%= t('review.submit') %></button>
+  </form>
+</div>
+
+<%- include('../partials/footer') %>

@@ -4,9 +4,15 @@
 
 <a class="muted" href="/listings">← <%= t('common.back') %></a>
 
+<%
+  var coverImg = listing.thumbPath || listing.photoPath || '';
+  var ownerId = listing.userId && (listing.userId._id || listing.userId);
+  var iAmOwner = currentUser && String(currentUser._id) === String(ownerId);
+%>
+
 <div class="card">
-  <% if (listing.photoPath) { %>
-    <img src="<%= listing.photoPath %>" alt="<%= listing.title %>" style="border-radius:12px;margin-bottom:12px;max-height:320px;object-fit:cover;">
+  <% if (coverImg) { %>
+    <img src="<%= coverImg %>" alt="<%= listing.title %>" style="border-radius:12px;margin-bottom:12px;max-height:320px;object-fit:cover;width:100%;">
   <% } %>
   <div class="row between">
     <h1 style="margin:0;font-size:1.4rem;"><%= listing.title %></h1>
@@ -20,7 +26,17 @@
     <% if (listing.userId && listing.userId.displayName) { %>
       · <%= listing.userId.displayName %>
     <% } %>
+    <% if (typeof sellerReputation !== 'undefined' && sellerReputation && sellerReputation.count > 0) { %>
+      · <span class="pill" title="<%= sellerReputation.count %> <%= t('review.left') %>">★ <%= sellerReputation.avgRating.toFixed(1) %> (<%= sellerReputation.count %>)</span>
+    <% } %>
   </div>
+
+  <% if (listing.moderationStatus === 'pending') { %>
+    <div class="rationale" style="margin-top:10px;">
+      <strong><%= t('moderation.pending') %>.</strong>
+    </div>
+  <% } %>
+
   <% if (listing.description) { %>
     <p style="margin-top:12px;"><%= listing.description %></p>
   <% } %>
@@ -30,10 +46,21 @@
     </div>
   <% } %>
 
-  <% if (currentUser && String(currentUser._id) === String(listing.userId._id || listing.userId) && (listing.status === 'open' || listing.status === 'matched')) { %>
+  <% if (iAmOwner && (listing.status === 'open' || listing.status === 'matched')) { %>
     <form action="/listings/<%= listing._id %>/cancel" method="post" data-confirm="<%= t('listings.cancel') %>?" style="margin-top:12px;">
       <button class="btn danger" type="submit"><%= t('listings.cancel') %></button>
     </form>
+  <% } %>
+
+  <% if (currentUser && !iAmOwner && !listing.flagged) { %>
+    <form action="/listings/<%= listing._id %>/flag" method="post" data-confirm="<%= t('moderation.flag-confirm') %>" style="margin-top:12px;">
+      <input type="text" name="reason" placeholder="<%= t('moderation.flag-reason') %>" maxlength="200" style="margin-bottom:6px;">
+      <button class="btn ghost" type="submit"><%= t('moderation.flag') %></button>
+    </form>
+  <% } else if (listing.flagged) { %>
+    <div class="muted" style="margin-top:10px;font-size:0.85rem;">
+      <%= t('moderation.flagged') %>
+    </div>
   <% } %>
 </div>
 

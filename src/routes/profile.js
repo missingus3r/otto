@@ -4,6 +4,8 @@ import sanitizeHtml from 'sanitize-html';
 import requireAuth from '../middleware/requireAuth.js';
 import Listing from '../models/Listing.js';
 import Transaction from '../models/Transaction.js';
+import Review from '../models/Review.js';
+import User from '../models/User.js';
 
 const router = express.Router();
 router.use(requireAuth);
@@ -19,10 +21,30 @@ router.get('/', async (req, res, next) => {
       $or: [{ buyerId: req.user._id }, { sellerId: req.user._id }],
       status: 'completed',
     });
+
+    const reputation = await User.reputationFor(req.user._id);
+
+    // Reviews left to/for me, for the partial.
+    const [received, left] = await Promise.all([
+      Review.find({ toUserId: req.user._id })
+        .populate('fromUserId', 'displayName email')
+        .sort({ createdAt: -1 })
+        .limit(20)
+        .lean(),
+      Review.find({ fromUserId: req.user._id })
+        .populate('toUserId', 'displayName email')
+        .sort({ createdAt: -1 })
+        .limit(20)
+        .lean(),
+    ]);
+
     res.render('app/profile', {
       listingsCount,
       dealsCount,
       saved: !!req.query.saved,
+      reputation,
+      reviewsReceived: received,
+      reviewsLeft: left,
     });
   } catch (err) {
     next(err);

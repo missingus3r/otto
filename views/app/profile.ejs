@@ -9,7 +9,7 @@
     <div class="flash success"><%= t('common.save') %> ✓</div>
   <% } %>
 
-  <div class="row" style="gap:24px;margin-bottom:16px;">
+  <div class="row" style="gap:24px;margin-bottom:16px;flex-wrap:wrap;">
     <div>
       <div class="muted" style="font-size:0.8rem;"><%= t('profile.stats.listings') %></div>
       <div style="font-size:1.6rem;font-weight:700;"><%= listingsCount %></div>
@@ -18,6 +18,21 @@
       <div class="muted" style="font-size:0.8rem;"><%= t('profile.stats.deals') %></div>
       <div style="font-size:1.6rem;font-weight:700;"><%= dealsCount %></div>
     </div>
+    <div>
+      <div class="muted" style="font-size:0.8rem;"><%= t('profile.reputation') %></div>
+      <div style="font-size:1.6rem;font-weight:700;">
+        <% if (reputation && reputation.count > 0) { %>
+          ★ <%= reputation.avgRating.toFixed(1) %>
+          <span class="muted" style="font-size:0.85rem;">(<%= reputation.count %>)</span>
+        <% } else { %>
+          <span class="muted" style="font-size:1rem;"><%= t('review.empty') %></span>
+        <% } %>
+      </div>
+    </div>
+  </div>
+
+  <div class="btn-row" style="margin-bottom:16px;">
+    <button type="button" class="btn ghost" data-push-enable><%= t('push.enable') %></button>
   </div>
 
   <hr>
@@ -40,5 +55,41 @@
     <button class="btn block" type="submit"><%= t('profile.save') %></button>
   </form>
 </div>
+
+<% if (reviewsReceived && reviewsReceived.length) { %>
+  <h2 class="section-title"><%= t('review.received') %></h2>
+  <% reviewsReceived.forEach(function(r) { %>
+    <div class="card">
+      <div class="row between">
+        <strong>★ <%= r.rating %></strong>
+        <span class="muted" style="font-size:0.85rem;"><%= new Date(r.createdAt).toLocaleDateString() %></span>
+      </div>
+      <% if (r.comment) { %>
+        <div class="rationale">"<%= r.comment %>"</div>
+      <% } %>
+      <div class="muted" style="font-size:0.85rem;">
+        <%= r.fromUserId ? (r.fromUserId.displayName || r.fromUserId.email) : '—' %>
+      </div>
+    </div>
+  <% }); %>
+<% } %>
+
+<% if (reviewsLeft && reviewsLeft.length) { %>
+  <h2 class="section-title"><%= t('review.you-left') %></h2>
+  <% reviewsLeft.forEach(function(r) { %>
+    <div class="card">
+      <div class="row between">
+        <strong>★ <%= r.rating %></strong>
+        <span class="muted" style="font-size:0.85rem;"><%= new Date(r.createdAt).toLocaleDateString() %></span>
+      </div>
+      <% if (r.comment) { %>
+        <div class="rationale">"<%= r.comment %>"</div>
+      <% } %>
+      <div class="muted" style="font-size:0.85rem;">
+        → <%= r.toUserId ? (r.toUserId.displayName || r.toUserId.email) : '—' %>
+      </div>
+    </div>
+  <% }); %>
+<% } %>
 
 <%- include('../partials/footer') %>

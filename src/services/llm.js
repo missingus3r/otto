@@ -28,7 +28,8 @@ Rules:
 5. Score is 0-100. Use 80+ only for very compatible matches (clear price overlap, very related items, same currency).
 6. The rationale must be ONE sentence, in the same language as the listings (default Spanish), explaining why this match makes sense to a human.
 7. Skip ambiguous pairs. Quality over quantity. If nothing is a good match, return an empty array.
-8. Output strictly valid JSON of the form: { "matches": [ { "listingAId": "...", "listingBId": "...", "score": 0-100, "rationale": "...", "proposedPrice": number, "currency": "UYU|USD|..." } ] }`;
+8. Output strictly valid JSON of the form: { "matches": [ { "listingAId": "...", "listingBId": "...", "score": 0-100, "rationale": "...", "proposedPrice": number, "currency": "UYU|USD|..." } ] }
+9. Some listings include a "marketReference" with a median price scraped from a public marketplace. Use it as a sanity check: a sell asking 10× the market median is suspicious; a buy budget below half the market median is unlikely to clear. Mention the reference in the rationale ONLY if it materially explains the proposedPrice.`;
 
 export async function matchListings(openListings) {
   if (!Array.isArray(openListings) || openListings.length < 2) {
@@ -38,17 +39,26 @@ export async function matchListings(openListings) {
   const client = getClient();
   const model = process.env.AGENT_MODEL || 'gpt-4o-mini';
 
-  const compactListings = openListings.map((l) => ({
-    id: String(l._id),
-    userId: String(l.userId),
-    type: l.type,
-    title: l.title,
-    description: l.description || '',
-    priceMin: l.priceMin || 0,
-    priceMax: l.priceMax || 0,
-    currency: l.currency || 'UYU',
-    swapForDescription: l.swapForDescription || '',
-  }));
+  const compactListings = openListings.map((l) => {
+    const out = {
+      id: String(l._id),
+      userId: String(l.userId),
+      type: l.type,
+      title: l.title,
+      description: l.description || '',
+      priceMin: l.priceMin || 0,
+      priceMax: l.priceMax || 0,
+      currency: l.currency || 'UYU',
+      swapForDescription: l.swapForDescription || '',
+    };
+    if (l.marketReference && l.marketReference.median != null) {
+      out.marketReference = {
+        median: l.marketReference.median,
+        samples: l.marketReference.samples,
+      };
+    }
+    return out;
+  });
 
   const userMessage = `Here are the currently open listings (JSON):\n\n${JSON.stringify(
     compactListings,
