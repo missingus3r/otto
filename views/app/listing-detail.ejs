@@ -1,0 +1,58 @@
+<%- include('../partials/header', { pageTitle: listing.title }) %>
+<%- include('../partials/nav', { activeNav: 'listings' }) %>
+<%- include('../partials/flash') %>
+
+<a class="muted" href="/listings">← <%= t('common.back') %></a>
+
+<div class="card">
+  <% if (listing.photoPath) { %>
+    <img src="<%= listing.photoPath %>" alt="<%= listing.title %>" style="border-radius:12px;margin-bottom:12px;max-height:320px;object-fit:cover;">
+  <% } %>
+  <div class="row between">
+    <h1 style="margin:0;font-size:1.4rem;"><%= listing.title %></h1>
+    <span class="pill <%= listing.status %>"><%= t('listings.status.' + listing.status) %></span>
+  </div>
+  <div class="muted" style="margin-top:6px;">
+    <span class="pill <%= listing.type %>"><%= t('listings.type.' + listing.type) %></span>
+    <% if (listing.type !== 'swap') { %>
+      · <%= listing.priceMin %>–<%= listing.priceMax %> <%= listing.currency %>
+    <% } %>
+    <% if (listing.userId && listing.userId.displayName) { %>
+      · <%= listing.userId.displayName %>
+    <% } %>
+  </div>
+  <% if (listing.description) { %>
+    <p style="margin-top:12px;"><%= listing.description %></p>
+  <% } %>
+  <% if (listing.type === 'swap' && listing.swapForDescription) { %>
+    <div class="rationale">
+      <strong><%= t('listings.swapFor') %>:</strong> <%= listing.swapForDescription %>
+    </div>
+  <% } %>
+
+  <% if (currentUser && String(currentUser._id) === String(listing.userId._id || listing.userId) && (listing.status === 'open' || listing.status === 'matched')) { %>
+    <form action="/listings/<%= listing._id %>/cancel" method="post" data-confirm="<%= t('listings.cancel') %>?" style="margin-top:12px;">
+      <button class="btn danger" type="submit"><%= t('listings.cancel') %></button>
+    </form>
+  <% } %>
+</div>
+
+<h2 class="section-title"><%= t('listings.relatedMatches') %></h2>
+<% if (!matches || matches.length === 0) { %>
+  <div class="card muted"><%= t('listings.noRelatedMatches') %></div>
+<% } else { %>
+  <% matches.forEach(function(m) { %>
+    <div class="match-card">
+      <div class="match-header">
+        <span class="pill"><%= t('matches.status.' + m.status) %></span>
+        <span class="match-score"><%= m.agentScore %></span>
+      </div>
+      <div class="rationale">"<%= m.agentRationale %>"</div>
+      <div class="muted">
+        <%= t('matches.proposedPrice') %>: <strong><%= m.proposedPrice %> <%= m.currency %></strong>
+      </div>
+    </div>
+  <% }); %>
+<% } %>
+
+<%- include('../partials/footer') %>

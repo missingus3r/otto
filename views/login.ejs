@@ -1,0 +1,23 @@
+<%- include('partials/header', { pageTitle: t('auth.loginTitle') }) %>
+<%- include('partials/flash') %>
+
+<div class="form-card">
+  <h1><%= t('auth.loginTitle') %></h1>
+  <% if (typeof error !== 'undefined' && error) { %>
+    <div class="error-msg"><%= error %></div>
+  <% } %>
+  <form action="/auth/login" method="post">
+    <label for="email"><%= t('auth.email') %></label>
+    <input id="email" type="email" name="email" required autocomplete="email">
+    <label for="password"><%= t('auth.password') %></label>
+    <input id="password" type="password" name="password" required autocomplete="current-password">
+    <div class="spacer"></div>
+    <button class="btn block" type="submit"><%= t('auth.login') %></button>
+  </form>
+  <div class="spacer"></div>
+  <div class="center muted">
+    <%= t('auth.noAccount') %> <a href="/auth/register"><%= t('auth.register') %></a>
+  </div>
+</div>
+
+<%- include('partials/footer') %>

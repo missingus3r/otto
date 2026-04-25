@@ -1,0 +1,10 @@
+<%- include('partials/header', { pageTitle: 'Error ' + status }) %>
+
+<div class="error-page">
+  <p class="code"><%= status %></p>
+  <h2><%= message %></h2>
+  <div class="spacer"></div>
+  <a class="btn" href="/"><%= t('common.back') %></a>
+</div>
+
+<%- include('partials/footer') %>

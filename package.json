@@ -1,0 +1,35 @@
+{
+  "name": "dealr",
+  "version": "0.1.0",
+  "description": "Agent-mediated marketplace — list items, set price ranges, a single LLM matches and proposes deals. Users approve before anything closes.",
+  "main": "server.js",
+  "type": "module",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "nodemon server.js",
+    "agent:run-once": "node src/scripts/runAgentOnce.js"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "dependencies": {
+    "bcryptjs": "^2.4.3",
+    "compression": "^1.7.4",
+    "connect-mongo": "^5.1.0",
+    "dotenv": "^16.4.5",
+    "ejs": "^3.1.10",
+    "express": "^4.21.2",
+    "express-rate-limit": "^7.1.5",
+    "express-session": "^1.18.0",
+    "helmet": "^7.1.0",
+    "mongoose": "^8.0.3",
+    "multer": "^2.0.2",
+    "node-cron": "^3.0.3",
+    "openai": "^4.65.0",
+    "sanitize-html": "^2.17.0"
+  },
+  "devDependencies": {
+    "nodemon": "^3.1.0"
+  },
+  "license": "MIT"
+}

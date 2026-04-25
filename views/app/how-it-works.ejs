@@ -1,0 +1,34 @@
+<%- include('../partials/header', { pageTitle: t('nav.howItWorks') }) %>
+<% if (currentUser) { %>
+<%- include('../partials/nav') %>
+<% } %>
+
+<a class="muted" href="<%= currentUser ? '/listings' : '/' %>">← <%= t('common.back') %></a>
+
+<h1 class="section-title" style="margin-top:8px"><%= t('nav.howItWorks') %></h1>
+
+<div class="card">
+  <h3><%= t('landing.feature1.title') %></h3>
+  <p><%= t('landing.feature1.body') %></p>
+</div>
+
+<div class="card">
+  <h3><%= t('landing.feature2.title') %></h3>
+  <p><%= t('landing.feature2.body') %></p>
+  <p class="muted">
+    Inspirado en Project Deal de Anthropic. Si cada usuario corre su propio agente, el que tiene mejor IA gana.
+    En dealr el agente lo provee la plataforma — una sola IA, igual para todos.
+  </p>
+</div>
+
+<div class="card">
+  <h3><%= t('landing.feature3.title') %></h3>
+  <p><%= t('landing.feature3.body') %></p>
+</div>
+
+<h2 class="section-title">Ledger</h2>
+<div class="card">
+  <p>Cada propuesta y cada cierre se escriben en un ledger inmutable visible para el admin. Es la auditoría de "¿el agente jugó limpio?".</p>
+</div>
+
+<%- include('../partials/footer') %>

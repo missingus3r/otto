@@ -1,0 +1,7 @@
+<%
+  var flash = (typeof session !== 'undefined' && session && session.flash) ? session.flash : null;
+  if (flash) { session.flash = null; }
+%>
+<% if (flash) { %>
+  <div class="flash <%= flash.type || '' %>"><%= flash.message %></div>
+<% } %>

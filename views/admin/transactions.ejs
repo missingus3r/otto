@@ -1,0 +1,36 @@
+<%- include('../partials/header', { pageTitle: t('admin.transactions') }) %>
+<%- include('../partials/nav') %>
+
+<a class="muted" href="/admin">← <%= t('common.back') %></a>
+<h1 class="section-title" style="margin-top:8px"><%= t('admin.transactions') %></h1>
+
+<div class="table-wrap card" style="padding:0;">
+  <table>
+    <thead>
+      <tr>
+        <th>ID</th>
+        <th>Buyer</th>
+        <th>Seller</th>
+        <th>Final</th>
+        <th>Status</th>
+        <th>Created</th>
+        <th>Completed</th>
+      </tr>
+    </thead>
+    <tbody>
+      <% txs.forEach(function(tx) { %>
+        <tr>
+          <td style="font-family:monospace;font-size:0.75rem;"><%= String(tx._id).slice(-6) %></td>
+          <td><%= tx.buyerId ? (tx.buyerId.displayName || tx.buyerId.email) : '—' %></td>
+          <td><%= tx.sellerId ? (tx.sellerId.displayName || tx.sellerId.email) : '—' %></td>
+          <td><%= tx.finalPrice %> <%= tx.currency %></td>
+          <td><span class="pill"><%= tx.status %></span></td>
+          <td style="font-size:0.8rem"><%= new Date(tx.createdAt).toLocaleDateString() %></td>
+          <td style="font-size:0.8rem"><%= tx.completedAt ? new Date(tx.completedAt).toLocaleDateString() : '—' %></td>
+        </tr>
+      <% }); %>
+    </tbody>
+  </table>
+</div>
+
+<%- include('../partials/footer') %>

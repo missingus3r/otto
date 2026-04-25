@@ -1,0 +1,48 @@
+<%- include('../partials/header', { pageTitle: t('admin.users') }) %>
+<%- include('../partials/nav') %>
+
+<a class="muted" href="/admin">← <%= t('common.back') %></a>
+<h1 class="section-title" style="margin-top:8px"><%= t('admin.users') %></h1>
+
+<div class="table-wrap card" style="padding:0;">
+  <table>
+    <thead>
+      <tr>
+        <th>Email</th>
+        <th>Nombre</th>
+        <th>Rol</th>
+        <th>Lang</th>
+        <th>Created</th>
+        <th>Last login</th>
+        <th></th>
+      </tr>
+    </thead>
+    <tbody>
+      <% users.forEach(function(u) { %>
+        <tr>
+          <td><%= u.email %><% if (u.banned) { %> <span class="pill cancelled">banned</span><% } %></td>
+          <td><%= u.displayName || '' %></td>
+          <td><%= u.role %></td>
+          <td><%= u.lang %></td>
+          <td style="font-size:0.8rem"><%= new Date(u.createdAt).toLocaleDateString() %></td>
+          <td style="font-size:0.8rem"><%= u.lastLoginAt ? new Date(u.lastLoginAt).toLocaleDateString() : '—' %></td>
+          <td>
+            <% if (u.role !== 'admin') { %>
+              <% if (u.banned) { %>
+                <form action="/admin/users/<%= u._id %>/unban" method="post" style="display:inline;">
+                  <button class="btn ghost" type="submit" style="padding:4px 10px;min-height:0;font-size:0.8rem;"><%= t('admin.unban') %></button>
+                </form>
+              <% } else { %>
+                <form action="/admin/users/<%= u._id %>/ban" method="post" style="display:inline;" data-confirm="<%= t('admin.ban') %> <%= u.email %>?">
+                  <button class="btn danger" type="submit" style="padding:4px 10px;min-height:0;font-size:0.8rem;"><%= t('admin.ban') %></button>
+                </form>
+              <% } %>
+            <% } %>
+          </td>
+        </tr>
+      <% }); %>
+    </tbody>
+  </table>
+</div>
+
+<%- include('../partials/footer') %>

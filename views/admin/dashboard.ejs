@@ -1,0 +1,71 @@
+<%- include('../partials/header', { pageTitle: t('admin.title') }) %>
+<%- include('../partials/nav') %>
+<%- include('../partials/flash') %>
+
+<h1 class="section-title" style="margin-top:8px"><%= t('admin.title') %></h1>
+
+<div class="features">
+  <div class="feature">
+    <div class="muted"><%= t('admin.counts.users') %></div>
+    <div style="font-size:2rem;font-weight:700;"><%= counts.users %></div>
+  </div>
+  <div class="feature">
+    <div class="muted"><%= t('admin.counts.openListings') %></div>
+    <div style="font-size:2rem;font-weight:700;"><%= counts.openListings %></div>
+  </div>
+  <div class="feature">
+    <div class="muted"><%= t('admin.counts.pendingMatches') %></div>
+    <div style="font-size:2rem;font-weight:700;"><%= counts.pendingMatches %></div>
+  </div>
+</div>
+
+<div class="card">
+  <div class="muted"><%= t('admin.counts.txToday') %></div>
+  <div style="font-size:2rem;font-weight:700;"><%= counts.txToday %></div>
+</div>
+
+<div class="card">
+  <div class="row between">
+    <div>
+      <strong><%= t('admin.agent.status') %>:</strong>
+      <% if (agentPaused) { %>
+        <span class="pill cancelled"><%= t('admin.agent.paused') %></span>
+      <% } else { %>
+        <span class="pill open"><%= t('admin.agent.running') %></span>
+      <% } %>
+    </div>
+    <div>
+      <% if (agentPaused) { %>
+        <form action="/admin/agent/resume" method="post" style="display:inline;">
+          <button class="btn" type="submit"><%= t('admin.agent.resume') %></button>
+        </form>
+      <% } else { %>
+        <form action="/admin/agent/pause" method="post" style="display:inline;">
+          <button class="btn ghost" type="submit"><%= t('admin.agent.pause') %></button>
+        </form>
+      <% } %>
+    </div>
+  </div>
+  <% if (lastLog) { %>
+    <hr>
+    <div class="muted" style="font-size:0.85rem;">
+      Last run: <%= new Date(lastLog.startedAt).toLocaleString() %> ·
+      scanned <%= lastLog.listingsScanned %> · proposed <%= lastLog.matchesProposed %> ·
+      tokens <%= lastLog.llmTokensUsed %>
+      <% if (lastLog.error) { %><br><span style="color:#dc2626;"><%= lastLog.error %></span><% } %>
+    </div>
+  <% } %>
+</div>
+
+<div class="card">
+  <h3>Navegación</h3>
+  <div class="btn-row">
+    <a class="btn ghost" href="/admin/users"><%= t('admin.users') %></a>
+    <a class="btn ghost" href="/admin/listings"><%= t('admin.listings') %></a>
+    <a class="btn ghost" href="/admin/transactions"><%= t('admin.transactions') %></a>
+    <a class="btn ghost" href="/admin/ledger"><%= t('admin.ledger') %></a>
+    <a class="btn ghost" href="/admin/agent-log"><%= t('admin.agentLog') %></a>
+  </div>
+</div>
+
+<%- include('../partials/footer') %>

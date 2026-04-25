@@ -1,0 +1,35 @@
+<% if (currentUser) { %>
+<nav class="topnav">
+  <a href="/listings" class="brand"><span>dealr</span></a>
+  <div class="topnav-links">
+    <a href="/listings"><%= t('nav.listings') %></a>
+    <a href="/listings/new"><%= t('nav.new') %></a>
+    <a href="/matches"><%= t('nav.matches') %></a>
+    <a href="/profile"><%= t('nav.profile') %></a>
+    <% if (currentUser.role === 'admin') { %>
+      <a href="/admin"><%= t('nav.admin') %></a>
+    <% } %>
+    <form action="/auth/logout" method="post" style="display:inline;margin:0;">
+      <button class="btn ghost" type="submit" style="padding:6px 12px;min-height:0;font-size:0.9rem;"><%= t('nav.logout') %></button>
+    </form>
+  </div>
+  <button id="hamburger" class="hamburger" aria-label="menu">≡</button>
+</nav>
+<div id="mobileMenu" class="mobile-menu">
+  <a href="/listings"><%= t('nav.listings') %></a>
+  <a href="/listings/new"><%= t('nav.new') %></a>
+  <a href="/matches"><%= t('nav.matches') %></a>
+  <a href="/profile"><%= t('nav.profile') %></a>
+  <% if (currentUser.role === 'admin') { %>
+    <a href="/admin"><%= t('nav.admin') %></a>
+  <% } %>
+  <a href="/how-it-works"><%= t('nav.howItWorks') %></a>
+  <form action="/auth/logout" method="post"><button type="submit"><%= t('nav.logout') %></button></form>
+</div>
+<nav class="bottomnav">
+  <a href="/listings"<%= (typeof activeNav !== 'undefined' && activeNav === 'listings') ? ' class="active"' : '' %>><span>•</span><%= t('nav.listings') %></a>
+  <a href="/listings/new"<%= (typeof activeNav !== 'undefined' && activeNav === 'new') ? ' class="active"' : '' %>><span>+</span><%= t('nav.new') %></a>
+  <a href="/matches"<%= (typeof activeNav !== 'undefined' && activeNav === 'matches') ? ' class="active"' : '' %>><span>↔</span><%= t('nav.matches') %></a>
+  <a href="/profile"<%= (typeof activeNav !== 'undefined' && activeNav === 'profile') ? ' class="active"' : '' %>><span>☺</span><%= t('nav.profile') %></a>
+</nav>
+<% } %>
