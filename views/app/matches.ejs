@@ -16,6 +16,13 @@
                        (iOwnB && (m.status === 'accepted_b' || m.status === 'accepted_both'));
        var canAct = (m.status === 'proposed' || m.status === 'accepted_a' || m.status === 'accepted_b') &&
                     !iAccepted;
+       var tx = (typeof txByMatch !== 'undefined' && txByMatch) ? txByMatch[String(m._id)] : null;
+       var info = (typeof reviewInfo !== 'undefined' && reviewInfo) ? reviewInfo[String(m._id)] : null;
+       var canChat = ['accepted_a','accepted_b','accepted_both'].indexOf(m.status) !== -1;
+       var myUserId = String(currentUser._id);
+       var iAmBuyer = tx && String(tx.buyerId) === myUserId;
+       var iAmSeller = tx && String(tx.sellerId) === myUserId;
+       var meCompleted = tx && ((iAmBuyer && tx.buyerCompletedAt) || (iAmSeller && tx.sellerCompletedAt));
   %>
     <div class="match-card">
       <div class="match-header">
@@ -29,7 +36,7 @@
           <a href="/listings/<%= mine._id %>"><strong><%= mine.title %></strong></a>
           <div class="muted" style="font-size:0.85rem;">
             <span class="pill <%= mine.type %>"><%= t('listings.type.' + mine.type) %></span>
-            <% if (mine.type !== 'swap') { %><%= mine.priceMin %>–<%= mine.priceMax %> <%= mine.currency %><% } %>
+            <% if (mine.type !== 'swap') { %><%= formatPriceRange(mine.priceMin, mine.priceMax, mine.currency) %><% } %>
           </div>
         </div>
         <div style="flex:1;min-width:140px;">
@@ -37,7 +44,7 @@
           <a href="/listings/<%= other._id %>"><strong><%= other.title %></strong></a>
           <div class="muted" style="font-size:0.85rem;">
             <span class="pill <%= other.type %>"><%= t('listings.type.' + other.type) %></span>
-            <% if (other.type !== 'swap') { %><%= other.priceMin %>–<%= other.priceMax %> <%= other.currency %><% } %>
+            <% if (other.type !== 'swap') { %><%= formatPriceRange(other.priceMin, other.priceMax, other.currency) %><% } %>
           </div>
         </div>
       </div>
@@ -45,29 +52,98 @@
       <div class="rationale">"<%= m.agentRationale %>"</div>
 
       <div class="muted">
-        <%= t('matches.proposedPrice') %>: <strong><%= m.proposedPrice %> <%= m.currency %></strong>
+        <%= t('matches.proposedPrice') %>: <strong><%= formatPrice(m.proposedPrice, m.currency) %></strong>
         · <%= t('matches.expires') %>: <%= new Date(m.expiresAt).toLocaleString() %>
       </div>
 
-      <% if (m.status === 'expired' || m.status === 'rejected' || m.status === 'accepted_both') { %>
+      <% if (m.status === 'expired' || m.status === 'rejected') { %>
         <!-- terminal -->
+      <% } else if (m.status === 'accepted_both') {
+           // Show transaction action panel
+        if (tx && tx.status === 'pending') { %>
+          <div class="btn-row" style="margin-top:10px;">
+            <% if (!meCompleted) { %>
+              <form action="/matches/<%= m._id %>/complete" method="post" style="flex:1;">
+                <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+                <button class="btn block" type="submit">
+                  <%= iAmBuyer ? t('matches.completeBuyer') : t('matches.completeSeller') %>
+                </button>
+              </form>
+            <% } else { %>
+              <div class="muted" style="flex:1;text-align:center;align-self:center;"><%= t('matches.completeWaiting') %></div>
+            <% } %>
+            <form action="/matches/<%= m._id %>/cancel-tx" method="post" data-confirm="<%= t('matches.cancelTxConfirm') %>" style="flex:1;">
+              <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+              <button class="btn ghost block" type="submit"><%= t('matches.cancelTx') %></button>
+            </form>
+          </div>
+        <% } %>
       <% } else if (iAccepted) { %>
         <div class="muted" style="margin-top:10px;"><%= t('matches.waiting') %></div>
       <% } else if (canAct) { %>
         <div class="btn-row" style="margin-top:10px;">
           <form action="/matches/<%= m._id %>/accept" method="post" style="flex:1;">
+            <input type="hidden" name="_csrf" value="<%= csrfToken %>">
             <button class="btn block" type="submit"><%= t('matches.accept') %></button>
           </form>
           <form action="/matches/<%= m._id %>/reject" method="post" style="flex:1;" data-confirm="<%= t('matches.reject') %>?">
+            <input type="hidden" name="_csrf" value="<%= csrfToken %>">
             <button class="btn ghost block" type="submit"><%= t('matches.reject') %></button>
           </form>
         </div>
       <% } %>
 
+      <% if (canChat) { %>
+        <div class="btn-row" style="margin-top:10px;">
+          <a class="btn ghost block" href="/messages/<%= m._id %>"><%= t('matches.openChat') %></a>
+        </div>
+      <% } %>
+
       <%
-        var info = (typeof reviewInfo !== 'undefined' && reviewInfo) ? reviewInfo[String(m._id)] : null;
-        if (info && info.completed && !info.reviewed) {
+        // Counter-offer form (only when match is in negotiation, not closed/expired/accepted_both)
+        var canCounter = ['proposed','accepted_a','accepted_b'].indexOf(m.status) !== -1;
+        if (canCounter) {
       %>
+        <details style="margin-top:10px;">
+          <summary><%= t('matches.counter') %></summary>
+          <form action="/matches/<%= m._id %>/counter" method="post" style="margin-top:10px;">
+            <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+            <label for="counter-price-<%= m._id %>"><%= t('matches.counterPrice') %></label>
+            <input id="counter-price-<%= m._id %>" type="number" min="0" step="0.01" name="price" required value="<%= m.proposedPrice %>">
+            <label for="counter-msg-<%= m._id %>"><%= t('matches.counterMessage') %></label>
+            <input id="counter-msg-<%= m._id %>" type="text" name="message" maxlength="200">
+            <div class="spacer"></div>
+            <button class="btn block" type="submit"><%= t('matches.counterSubmit') %></button>
+          </form>
+        </details>
+      <% } %>
+
+      <% if (m.offers && m.offers.length) { %>
+        <% m.offers.filter(function(o){ return o.status === 'proposed'; }).forEach(function(o) {
+          var fromMe = String(o.fromUserId) === myUserId;
+        %>
+          <div class="rationale" style="margin-top:8px;">
+            <strong><%= formatPrice(o.price, m.currency) %></strong>
+            <% if (o.message) { %> — "<%= o.message %>"<% } %>
+            <% if (!fromMe) { %>
+              <div class="btn-row" style="margin-top:6px;">
+                <form action="/matches/<%= m._id %>/offers/<%= o._id %>/accept" method="post" style="flex:1;">
+                  <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+                  <button class="btn block" type="submit"><%= t('matches.counterAccept') %></button>
+                </form>
+                <form action="/matches/<%= m._id %>/offers/<%= o._id %>/reject" method="post" style="flex:1;">
+                  <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+                  <button class="btn ghost block" type="submit"><%= t('matches.counterReject') %></button>
+                </form>
+              </div>
+            <% } else { %>
+              <div class="muted" style="font-size:0.8rem;margin-top:6px;"><%= t('matches.waiting') %></div>
+            <% } %>
+          </div>
+        <% }); %>
+      <% } %>
+
+      <% if (info && info.completed && !info.reviewed) { %>
         <div style="margin-top:10px;">
           <a class="btn ghost block" href="/reviews/new/<%= info.transactionId %>"><%= t('review.leave') %></a>
         </div>

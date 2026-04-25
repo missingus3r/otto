@@ -11,7 +11,10 @@ const transactionSchema = new mongoose.Schema({
     enum: ['pending', 'completed', 'cancelled'],
     default: 'pending',
   },
+  buyerCompletedAt: { type: Date },
+  sellerCompletedAt: { type: Date },
   completedAt: { type: Date },
+  cancelledAt: { type: Date },
   createdAt: { type: Date, default: Date.now },
 });
 

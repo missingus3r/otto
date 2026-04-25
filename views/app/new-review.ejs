@@ -10,6 +10,7 @@
   <% } %>
 
   <form action="/reviews" method="post">
+    <input type="hidden" name="_csrf" value="<%= csrfToken %>">
     <input type="hidden" name="transactionId" value="<%= tx._id %>">
 
     <label for="rating"><%= t('review.rating') %></label>

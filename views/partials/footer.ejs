@@ -5,11 +5,26 @@
     <div>
       <a href="?lang=es">ES</a> ·
       <a href="?lang=pt">PT</a> ·
-      <a href="?lang=en">EN</a>
+      <a href="?lang=en">EN</a> ·
+      <a href="?lang=fr">FR</a> ·
+      <a href="?lang=it">IT</a>
     </div>
     <div class="spacer"></div>
-    <div><a href="/how-it-works"><%= t('nav.howItWorks') %></a></div>
+    <div>
+      <a href="/how-it-works"><%= t('nav.howItWorks') %></a> ·
+      <a href="/terms"><%= t('footer.terms') %></a> ·
+      <a href="/privacy"><%= t('footer.privacy') %></a>
+    </div>
   </footer>
+
+  <div id="cookieBanner" class="cookie-banner" style="display:none;">
+    <div class="cookie-banner-text"><%= t('cookie.banner') %></div>
+    <div class="cookie-banner-actions">
+      <button type="button" id="cookieAccept" class="btn"><%= t('cookie.accept') %></button>
+      <button type="button" id="cookieNecessary" class="btn ghost"><%= t('cookie.necessary') %></button>
+    </div>
+  </div>
+
   <script src="/js/app.js"></script>
   <script src="/js/push.js"></script>
 </body>

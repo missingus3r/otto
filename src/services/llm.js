@@ -29,7 +29,9 @@ Rules:
 6. The rationale must be ONE sentence, in the same language as the listings (default Spanish), explaining why this match makes sense to a human.
 7. Skip ambiguous pairs. Quality over quantity. If nothing is a good match, return an empty array.
 8. Output strictly valid JSON of the form: { "matches": [ { "listingAId": "...", "listingBId": "...", "score": 0-100, "rationale": "...", "proposedPrice": number, "currency": "UYU|USD|..." } ] }
-9. Some listings include a "marketReference" with a median price scraped from a public marketplace. Use it as a sanity check: a sell asking 10× the market median is suspicious; a buy budget below half the market median is unlikely to clear. Mention the reference in the rationale ONLY if it materially explains the proposedPrice.`;
+9. Some listings include a "marketReference" with a median price scraped from a public marketplace. Use it as a sanity check: a sell asking 10× the market median is suspicious; a buy budget below half the market median is unlikely to clear. Mention the reference in the rationale ONLY if it materially explains the proposedPrice.
+10. Each listing has a "category". HARD RULE: only match listings that share the same category. Never propose cross-category matches.
+11. Each listing has an optional "city". Prefer matches in the same city — boost score by 10 points if seller_city and buyer_city match (cap at 100).`;
 
 export async function matchListings(openListings) {
   if (!Array.isArray(openListings) || openListings.length < 2) {
@@ -50,6 +52,8 @@ export async function matchListings(openListings) {
       priceMax: l.priceMax || 0,
       currency: l.currency || 'UYU',
       swapForDescription: l.swapForDescription || '',
+      category: l.category || 'otros',
+      city: l.city || '',
     };
     if (l.marketReference && l.marketReference.median != null) {
       out.marketReference = {

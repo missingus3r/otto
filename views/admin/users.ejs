@@ -12,30 +12,52 @@
         <th>Nombre</th>
         <th>Rol</th>
         <th>Lang</th>
+        <th>Verified</th>
         <th>Created</th>
         <th>Last login</th>
+        <th>Status</th>
         <th></th>
       </tr>
     </thead>
     <tbody>
-      <% users.forEach(function(u) { %>
+      <% users.forEach(function(u) {
+           var tempBanned = u.bannedUntil && new Date(u.bannedUntil).getTime() > Date.now();
+      %>
         <tr>
-          <td><%= u.email %><% if (u.banned) { %> <span class="pill cancelled">banned</span><% } %></td>
+          <td><%= u.email %></td>
           <td><%= u.displayName || '' %></td>
           <td><%= u.role %></td>
           <td><%= u.lang %></td>
+          <td><%= u.emailVerified ? '✓' : '—' %></td>
           <td style="font-size:0.8rem"><%= new Date(u.createdAt).toLocaleDateString() %></td>
           <td style="font-size:0.8rem"><%= u.lastLoginAt ? new Date(u.lastLoginAt).toLocaleDateString() : '—' %></td>
           <td>
+            <% if (u.banned) { %><span class="pill cancelled">banned</span>
+            <% } else if (tempBanned) { %><span class="pill cancelled">until <%= new Date(u.bannedUntil).toLocaleDateString() %></span>
+            <% } %>
+            <% if (u.deletionRequestedAt) { %><span class="pill cancelled">del-pending</span><% } %>
+          </td>
+          <td>
             <% if (u.role !== 'admin') { %>
-              <% if (u.banned) { %>
+              <% if (u.banned || tempBanned) { %>
                 <form action="/admin/users/<%= u._id %>/unban" method="post" style="display:inline;">
+                  <input type="hidden" name="_csrf" value="<%= csrfToken %>">
                   <button class="btn ghost" type="submit" style="padding:4px 10px;min-height:0;font-size:0.8rem;"><%= t('admin.unban') %></button>
                 </form>
               <% } else { %>
                 <form action="/admin/users/<%= u._id %>/ban" method="post" style="display:inline;" data-confirm="<%= t('admin.ban') %> <%= u.email %>?">
+                  <input type="hidden" name="_csrf" value="<%= csrfToken %>">
                   <button class="btn danger" type="submit" style="padding:4px 10px;min-height:0;font-size:0.8rem;"><%= t('admin.ban') %></button>
                 </form>
+                <details style="display:inline-block;margin-left:6px;">
+                  <summary style="font-size:0.8rem;cursor:pointer;"><%= t('admin.banTemp') %></summary>
+                  <form action="/admin/users/<%= u._id %>/ban-temp" method="post" style="margin-top:6px;display:flex;gap:4px;align-items:center;">
+                    <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+                    <input type="number" name="days" min="1" max="365" value="7" required style="width:70px;min-height:0;padding:4px 6px;font-size:0.8rem;">
+                    <input type="text" name="reason" placeholder="<%= t('admin.banReason') %>" maxlength="200" style="min-height:0;padding:4px 6px;font-size:0.8rem;">
+                    <button class="btn danger" type="submit" style="padding:4px 10px;min-height:0;font-size:0.8rem;"><%= t('admin.banTemp') %></button>
+                  </form>
+                </details>
               <% } %>
             <% } %>
           </td>
@@ -44,5 +66,6 @@
     </tbody>
   </table>
 </div>
+<%- include('../partials/pager') %>
 
 <%- include('../partials/footer') %>

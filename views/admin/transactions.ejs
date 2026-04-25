@@ -23,7 +23,7 @@
           <td style="font-family:monospace;font-size:0.75rem;"><%= String(tx._id).slice(-6) %></td>
           <td><%= tx.buyerId ? (tx.buyerId.displayName || tx.buyerId.email) : '—' %></td>
           <td><%= tx.sellerId ? (tx.sellerId.displayName || tx.sellerId.email) : '—' %></td>
-          <td><%= tx.finalPrice %> <%= tx.currency %></td>
+          <td><%= formatPrice(tx.finalPrice, tx.currency) %></td>
           <td><span class="pill"><%= tx.status %></span></td>
           <td style="font-size:0.8rem"><%= new Date(tx.createdAt).toLocaleDateString() %></td>
           <td style="font-size:0.8rem"><%= tx.completedAt ? new Date(tx.completedAt).toLocaleDateString() : '—' %></td>
@@ -32,5 +32,6 @@
     </tbody>
   </table>
 </div>
+<%- include('../partials/pager') %>
 
 <%- include('../partials/footer') %>

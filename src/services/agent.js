@@ -13,11 +13,16 @@ import User from '../models/User.js';
 
 const BATCH_SIZE = 30;
 const PRICE_SCRAPE_ENABLED = process.env.PRICE_SCRAPE_ENABLED === 'true';
+const ACCOUNT_DELETION_GRACE_DAYS = parseInt(
+  process.env.ACCOUNT_DELETION_GRACE_DAYS || '7',
+  10
+);
 
 // in-memory pause flag — admin can flip via /admin/agent/pause
 let _paused = false;
 let _scheduledTask = null;
 let _running = false;
+let _deletionTask = null;
 
 export function isPaused() {
   return _paused;
@@ -68,6 +73,59 @@ async function enrichWithMarket(listings) {
   return enriched;
 }
 
+// Sweep at the start of every run:
+//  1) Expire matches whose expiresAt has passed (any non-terminal status).
+//  2) Reopen listings that are still 'matched' but have no live match.
+async function expireAndCleanup() {
+  const now = new Date();
+
+  const expiredR = await Match.updateMany(
+    {
+      status: { $in: ['proposed', 'accepted_a', 'accepted_b'] },
+      expiresAt: { $lt: now },
+    },
+    { $set: { status: 'expired' } }
+  );
+  if (expiredR.modifiedCount) {
+    console.log(`[agent] expired ${expiredR.modifiedCount} stale matches`);
+  }
+
+  // For each listing currently 'matched', if there is no Match in a live state
+  // referencing it, reopen it.
+  const matchedListings = await Listing.find({ status: 'matched' })
+    .select('_id')
+    .lean();
+  if (matchedListings.length) {
+    const liveMatches = await Match.find({
+      $or: [
+        { listingA: { $in: matchedListings.map((l) => l._id) } },
+        { listingB: { $in: matchedListings.map((l) => l._id) } },
+      ],
+      status: { $in: ['proposed', 'accepted_a', 'accepted_b', 'accepted_both'] },
+    })
+      .select('listingA listingB')
+      .lean();
+
+    const liveSet = new Set();
+    for (const m of liveMatches) {
+      liveSet.add(String(m.listingA));
+      liveSet.add(String(m.listingB));
+    }
+
+    const toReopen = matchedListings
+      .map((l) => l._id)
+      .filter((id) => !liveSet.has(String(id)));
+
+    if (toReopen.length) {
+      await Listing.updateMany(
+        { _id: { $in: toReopen }, status: 'matched' },
+        { $set: { status: 'open' } }
+      );
+      console.log(`[agent] reopened ${toReopen.length} orphan matched listings`);
+    }
+  }
+}
+
 export async function runOnce() {
   if (_running) {
     console.log('[agent] previous run still in progress — skipping');
@@ -89,6 +147,9 @@ export async function runOnce() {
   let errMsg = '';
 
   try {
+    // sweep stale matches & orphan-matched listings BEFORE pulling open ones.
+    await expireAndCleanup();
+
     const openListings = await Listing.find({
       status: 'open',
       moderationStatus: { $nin: ['pending', 'rejected'] },
@@ -98,12 +159,6 @@ export async function runOnce() {
     if (listingsScanned < 2) {
       console.log('[agent] not enough open listings to match');
     } else {
-      // expire any old matches
-      await Match.updateMany(
-        { status: 'proposed', expiresAt: { $lt: new Date() } },
-        { $set: { status: 'expired' } }
-      );
-
       for (const batch of chunk(openListings, BATCH_SIZE)) {
         // Inject market baselines (parallel; gated by env).
         const enrichedBatch = await enrichWithMarket(batch);
@@ -123,6 +178,10 @@ export async function runOnce() {
           const b = batch.find((l) => String(l._id) === String(m.listingBId));
           if (!a || !b) continue;
           if (String(a.userId) === String(b.userId)) continue;
+          // Hard rule: same category required.
+          if (a.category && b.category && a.category !== b.category) {
+            continue;
+          }
           if (await existsMatch(a._id, b._id)) continue;
 
           const created = await Match.create({
@@ -163,10 +222,10 @@ export async function runOnce() {
             const langA = (userA && userA.lang) || process.env.DEFAULT_LANG || 'es';
             const langB = (userB && userB.lang) || process.env.DEFAULT_LANG || 'es';
             await Promise.all([
-              notifyUser(a.userId, buildPayload(langA)).catch((e) =>
+              notifyUser(a.userId, buildPayload(langA), 'matches').catch((e) =>
                 console.error('[push] notify A failed:', e.message)
               ),
-              notifyUser(b.userId, buildPayload(langB)).catch((e) =>
+              notifyUser(b.userId, buildPayload(langB), 'matches').catch((e) =>
                 console.error('[push] notify B failed:', e.message)
               ),
             ]);
@@ -214,4 +273,62 @@ export function startAgentCron() {
   return _scheduledTask;
 }
 
-export default { runOnce, startAgentCron, pause, resume, isPaused };
+// ─────────────────────────────────────────────────────────────────────────
+// Account deletion sweeper — runs daily. Anonymizes users whose
+// deletionRequestedAt is older than ACCOUNT_DELETION_GRACE_DAYS.
+// ─────────────────────────────────────────────────────────────────────────
+export async function runAccountDeletionSweep() {
+  const cutoff = new Date(
+    Date.now() - ACCOUNT_DELETION_GRACE_DAYS * 86400 * 1000
+  );
+  const candidates = await User.find({
+    deletionRequestedAt: { $lt: cutoff },
+    banned: { $ne: true },
+  });
+
+  let count = 0;
+  for (const u of candidates) {
+    try {
+      const id = String(u._id);
+      u.email = `deleted-${id}@otto.local`;
+      u.displayName = 'Usuario eliminado';
+      u.passwordHash = '';
+      u.banned = true;
+      u.banReason = 'account_deleted';
+      u.emailVerified = false;
+      u.emailVerifyToken = null;
+      u.passwordResetToken = null;
+      u.pendingEmail = null;
+      u.pendingEmailToken = null;
+      await u.save();
+      count += 1;
+      console.log(`[deletion] anonymized user ${id}`);
+    } catch (err) {
+      console.error('[deletion] sweep error:', err.message);
+    }
+  }
+  if (count) console.log(`[deletion] swept ${count} accounts`);
+  return count;
+}
+
+export function startAccountDeletionCron() {
+  if (_deletionTask) return _deletionTask;
+  // every day at 03:13 server time
+  _deletionTask = cron.schedule('13 3 * * *', () => {
+    runAccountDeletionSweep().catch((e) =>
+      console.error('[deletion] tick error:', e)
+    );
+  });
+  console.log('[deletion] cron scheduled (daily 03:13)');
+  return _deletionTask;
+}
+
+export default {
+  runOnce,
+  startAgentCron,
+  pause,
+  resume,
+  isPaused,
+  runAccountDeletionSweep,
+  startAccountDeletionCron,
+};

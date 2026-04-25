@@ -1,6 +1,8 @@
 import mongoose from 'mongoose';
 import bcrypt from 'bcryptjs';
 
+const SUPPORTED_LANGS = ['es', 'pt', 'en', 'fr', 'it'];
+
 const userSchema = new mongoose.Schema({
   email: {
     type: String,
@@ -13,10 +15,42 @@ const userSchema = new mongoose.Schema({
   passwordHash: { type: String, required: true },
   displayName: { type: String, default: '' },
   role: { type: String, enum: ['user', 'admin'], default: 'user' },
-  lang: { type: String, enum: ['es', 'pt', 'en'], default: 'es' },
+  lang: { type: String, enum: SUPPORTED_LANGS, default: 'es' },
   createdAt: { type: Date, default: Date.now },
   lastLoginAt: { type: Date },
+
+  // Bans (permanent and temporary)
   banned: { type: Boolean, default: false },
+  bannedUntil: { type: Date },
+  banReason: { type: String, default: '' },
+
+  // Email verification
+  emailVerified: { type: Boolean, default: false },
+  emailVerifyToken: { type: String, default: null, index: true },
+  emailVerifyExpiresAt: { type: Date },
+
+  // Pending email change (verified separately)
+  pendingEmail: { type: String, default: null },
+  pendingEmailToken: { type: String, default: null, index: true },
+  pendingEmailExpiresAt: { type: Date },
+
+  // Password reset
+  passwordResetToken: { type: String, default: null, index: true },
+  passwordResetExpiresAt: { type: Date },
+
+  // Geo
+  city: { type: String, default: '', maxlength: 80 },
+  country: { type: String, default: '', maxlength: 2 },
+
+  // Push notification preferences
+  pushPrefs: {
+    matches: { type: Boolean, default: true },
+    messages: { type: Boolean, default: true },
+    reviews: { type: Boolean, default: true },
+  },
+
+  // Account deletion (GDPR-ish soft delete)
+  deletionRequestedAt: { type: Date },
 });
 
 userSchema.methods.comparePassword = async function (plain) {
@@ -52,6 +86,13 @@ userSchema.statics.reputationFor = async function (userId) {
     avgRating: Math.round(agg[0].avg * 10) / 10,
     count: agg[0].count,
   };
+};
+
+// Helper: are we currently banned (perm or temp)?
+userSchema.methods.isBlocked = function () {
+  if (this.banned) return true;
+  if (this.bannedUntil && this.bannedUntil.getTime() > Date.now()) return true;
+  return false;
 };
 
 export default mongoose.models.User || mongoose.model('User', userSchema);

@@ -38,21 +38,73 @@
   <hr>
 
   <form action="/profile" method="post">
+    <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+
     <label for="email"><%= t('auth.email') %></label>
     <input id="email" type="email" value="<%= currentUser.email %>" disabled>
 
     <label for="displayName"><%= t('auth.displayName') %></label>
     <input id="displayName" name="displayName" type="text" value="<%= currentUser.displayName || '' %>" maxlength="80">
 
+    <label for="city"><%= t('profile.city') %></label>
+    <input id="city" name="city" type="text" value="<%= currentUser.city || '' %>" maxlength="80">
+
+    <label for="country"><%= t('profile.country') %></label>
+    <input id="country" name="country" type="text" value="<%= currentUser.country || '' %>" maxlength="2" style="text-transform:uppercase;">
+
     <label for="lang"><%= t('profile.lang') %></label>
     <select id="lang" name="lang">
       <option value="es"<%= currentUser.lang === 'es' ? ' selected' : '' %>>Español</option>
       <option value="pt"<%= currentUser.lang === 'pt' ? ' selected' : '' %>>Português</option>
       <option value="en"<%= currentUser.lang === 'en' ? ' selected' : '' %>>English</option>
+      <option value="fr"<%= currentUser.lang === 'fr' ? ' selected' : '' %>>Français</option>
+      <option value="it"<%= currentUser.lang === 'it' ? ' selected' : '' %>>Italiano</option>
     </select>
+
+    <label><%= t('profile.pushPrefs') %></label>
+    <div style="display:flex;flex-direction:column;gap:8px;">
+      <label><input type="checkbox" name="pushMatches" value="1"<%= (currentUser.pushPrefs && currentUser.pushPrefs.matches) ? ' checked' : '' %>> <%= t('profile.pushPrefs.matches') %></label>
+      <label><input type="checkbox" name="pushMessages" value="1"<%= (currentUser.pushPrefs && currentUser.pushPrefs.messages) ? ' checked' : '' %>> <%= t('profile.pushPrefs.messages') %></label>
+      <label><input type="checkbox" name="pushReviews" value="1"<%= (currentUser.pushPrefs && currentUser.pushPrefs.reviews) ? ' checked' : '' %>> <%= t('profile.pushPrefs.reviews') %></label>
+    </div>
 
     <div class="spacer"></div>
     <button class="btn block" type="submit"><%= t('profile.save') %></button>
+  </form>
+
+  <hr>
+  <h3><%= t('profile.changePassword') %></h3>
+  <form action="/profile/password" method="post">
+    <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+    <label for="currentPassword"><%= t('profile.currentPassword') %></label>
+    <input id="currentPassword" type="password" name="currentPassword" required autocomplete="current-password">
+    <label for="newPassword"><%= t('profile.newPassword') %></label>
+    <input id="newPassword" type="password" name="newPassword" required minlength="6" autocomplete="new-password">
+    <label for="confirmPassword"><%= t('profile.confirmPassword') %></label>
+    <input id="confirmPassword" type="password" name="confirmPassword" required minlength="6" autocomplete="new-password">
+    <div class="spacer"></div>
+    <button class="btn block" type="submit"><%= t('profile.changePassword') %></button>
+  </form>
+
+  <hr>
+  <h3><%= t('profile.changeEmail') %></h3>
+  <form action="/profile/email" method="post">
+    <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+    <label for="newEmail"><%= t('profile.newEmail') %></label>
+    <input id="newEmail" type="email" name="newEmail" required>
+    <div class="spacer"></div>
+    <button class="btn block" type="submit"><%= t('profile.changeEmail') %></button>
+  </form>
+
+  <hr>
+  <h3 style="color: var(--blood);"><%= t('profile.deleteTitle') %></h3>
+  <p class="muted"><%= t('profile.deleteIntro', { days: graceDays }) %></p>
+  <form action="/profile/delete" method="post">
+    <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+    <label for="confirm"><%= t('profile.deleteConfirm') %></label>
+    <input id="confirm" type="text" name="confirm" required placeholder="ELIMINAR">
+    <div class="spacer"></div>
+    <button class="btn danger block" type="submit"><%= t('profile.deleteSubmit') %></button>
   </form>
 </div>
 

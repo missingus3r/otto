@@ -8,51 +8,72 @@
     <div class="error-msg"><%= error %></div>
   <% } %>
 
-  <form action="/listings" method="post" enctype="multipart/form-data">
-    <label for="title"><%= t('listings.title') %></label>
-    <input id="title" name="title" type="text" required maxlength="120">
-
-    <label for="description"><%= t('listings.description') %> <span class="muted"><%= t('common.optional') %></span></label>
-    <textarea id="description" name="description" maxlength="2000"></textarea>
-
-    <label><%= t('listings.type.sell') %> / <%= t('listings.type.swap') %> / <%= t('listings.type.buy') %></label>
-    <div class="radio-group">
-      <label><input type="radio" name="type" value="sell" checked> <%= t('listings.type.sell') %></label>
-      <label><input type="radio" name="type" value="swap"> <%= t('listings.type.swap') %></label>
-      <label><input type="radio" name="type" value="buy"> <%= t('listings.type.buy') %></label>
+  <% if (typeof blocked !== 'undefined' && blocked) { %>
+    <div class="card">
+      <p><%= t('verify.required') %></p>
+      <form action="/auth/verify/resend" method="post">
+        <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+        <button class="btn" type="submit"><%= t('verify.resend') %></button>
+      </form>
     </div>
+  <% } else { %>
+    <form action="/listings" method="post" enctype="multipart/form-data">
+      <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+      <label for="title"><%= t('listings.title') %></label>
+      <input id="title" name="title" type="text" required maxlength="120">
 
-    <div class="row" style="gap:12px;">
-      <div style="flex:1;">
-        <label for="priceMin"><%= t('listings.priceMin') %></label>
-        <input id="priceMin" type="number" name="priceMin" min="0" step="0.01" value="0">
+      <label for="description"><%= t('listings.description') %> <span class="muted"><%= t('common.optional') %></span></label>
+      <textarea id="description" name="description" maxlength="2000"></textarea>
+
+      <label><%= t('listings.type.sell') %> / <%= t('listings.type.swap') %> / <%= t('listings.type.buy') %></label>
+      <div class="radio-group">
+        <label><input type="radio" name="type" value="sell" checked> <%= t('listings.type.sell') %></label>
+        <label><input type="radio" name="type" value="swap"> <%= t('listings.type.swap') %></label>
+        <label><input type="radio" name="type" value="buy"> <%= t('listings.type.buy') %></label>
       </div>
-      <div style="flex:1;">
-        <label for="priceMax"><%= t('listings.priceMax') %></label>
-        <input id="priceMax" type="number" name="priceMax" min="0" step="0.01" value="0">
+
+      <label for="category"><%= t('listings.category') %></label>
+      <select id="category" name="category">
+        <% (categories || []).forEach(function(c) { %>
+          <option value="<%= c %>"<%= c === 'otros' ? ' selected' : '' %>><%= t('category.' + c) %></option>
+        <% }); %>
+      </select>
+
+      <div class="row" style="gap:12px;">
+        <div style="flex:1;">
+          <label for="priceMin"><%= t('listings.priceMin') %></label>
+          <input id="priceMin" type="number" name="priceMin" min="0" step="0.01" value="0">
+        </div>
+        <div style="flex:1;">
+          <label for="priceMax"><%= t('listings.priceMax') %></label>
+          <input id="priceMax" type="number" name="priceMax" min="0" step="0.01" value="0">
+        </div>
       </div>
-    </div>
 
-    <label for="currency"><%= t('listings.currency') %></label>
-    <select id="currency" name="currency">
-      <option value="UYU">UYU</option>
-      <option value="USD">USD</option>
-      <option value="BRL">BRL</option>
-      <option value="ARS">ARS</option>
-      <option value="EUR">EUR</option>
-    </select>
+      <label for="currency"><%= t('listings.currency') %></label>
+      <select id="currency" name="currency">
+        <option value="UYU">UYU</option>
+        <option value="USD">USD</option>
+        <option value="BRL">BRL</option>
+        <option value="ARS">ARS</option>
+        <option value="EUR">EUR</option>
+      </select>
 
-    <div id="swapForWrap" style="display:none;">
-      <label for="swapForDescription"><%= t('listings.swapFor') %></label>
-      <textarea id="swapForDescription" name="swapForDescription" maxlength="500"></textarea>
-    </div>
+      <label for="city"><%= t('listings.cityOptional') %></label>
+      <input id="city" type="text" name="city" maxlength="80" value="<%= currentUser && currentUser.city ? currentUser.city : '' %>">
 
-    <label for="photo"><%= t('listings.photo') %> <span class="muted"><%= t('common.optional') %></span></label>
-    <input id="photo" type="file" name="photo" accept="image/*">
+      <div id="swapForWrap" style="display:none;">
+        <label for="swapForDescription"><%= t('listings.swapFor') %></label>
+        <textarea id="swapForDescription" name="swapForDescription" maxlength="500"></textarea>
+      </div>
 
-    <div class="spacer"></div>
-    <button class="btn block" type="submit"><%= t('listings.submit') %></button>
-  </form>
+      <label for="photos"><%= t('listings.photos') %> <span class="muted"><%= t('common.optional') %></span></label>
+      <input id="photos" type="file" name="photos" accept="image/*" multiple>
+
+      <div class="spacer"></div>
+      <button class="btn block" type="submit"><%= t('listings.submit') %></button>
+    </form>
+  <% } %>
 </div>
 
 <%- include('../partials/footer') %>

@@ -1,0 +1,43 @@
+<%- include('../partials/header', { pageTitle: t('legal.terms.title') }) %>
+<% if (currentUser) { %>
+<%- include('../partials/nav') %>
+<% } %>
+
+<a class="muted" href="<%= currentUser ? '/listings' : '/' %>">← <%= t('common.back') %></a>
+
+<h1 class="section-title" style="margin-top:8px"><%= t('legal.terms.title') %></h1>
+<div class="card" style="border-color: var(--blood);">
+  <strong style="color: var(--blood);"><%= t('legal.draft') %>.</strong>
+</div>
+
+<div class="card">
+  <h3>1. Aceptación</h3>
+  <p>Al usar otto, aceptás estos términos. Si no estás de acuerdo, no uses el servicio. Esto es un borrador inicial — la versión final va a estar redactada por un abogado.</p>
+</div>
+
+<div class="card">
+  <h3>2. Cuenta</h3>
+  <p>Creás una cuenta con tu email y una contraseña. Sos responsable de mantener tu contraseña segura. Podemos suspender o eliminar cuentas que violen estos términos, hagan spam, intenten estafas o usen el servicio para fines ilegales.</p>
+</div>
+
+<div class="card">
+  <h3>3. Publicaciones</h3>
+  <p>Sos el único responsable del contenido que publicás (títulos, descripciones, fotos). No subas cosas que no son tuyas, contenido ilegal, productos prohibidos por ley, ni nada que infrinja propiedad intelectual de terceros. Nos reservamos el derecho de bajar cualquier publicación a discreción.</p>
+</div>
+
+<div class="card">
+  <h3>4. El agente</h3>
+  <p>otto usa un único agente IA para proponer matches entre publicaciones. El agente puede equivocarse — la decisión final de aceptar o rechazar siempre es tuya. No garantizamos calidad, precisión ni resultado de los matches propuestos.</p>
+</div>
+
+<div class="card">
+  <h3>5. Transacciones</h3>
+  <p>otto facilita el contacto entre vendedor y comprador. La transacción real (entrega del producto, pago, garantía) ocurre fuera de la plataforma y es responsabilidad exclusiva de las partes. otto no es parte del contrato de compraventa.</p>
+</div>
+
+<div class="card">
+  <h3>6. Modificaciones</h3>
+  <p>Podemos cambiar estos términos en cualquier momento. Cambios significativos se notifican por email o por banner en la app.</p>
+</div>
+
+<%- include('../partials/footer') %>

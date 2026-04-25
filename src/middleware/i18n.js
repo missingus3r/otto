@@ -2,10 +2,12 @@ import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
 
+import { formatPrice, formatPriceRange } from '../util/format.js';
+
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-const SUPPORTED = ['es', 'pt', 'en'];
+const SUPPORTED = ['es', 'pt', 'en', 'fr', 'it'];
 
 const translations = {};
 for (const lang of SUPPORTED) {
@@ -43,13 +45,26 @@ export function i18nMiddleware(req, res, next) {
   const lang = pickLang(req);
   res.locals.lang = lang;
   res.locals.supportedLangs = SUPPORTED;
-  res.locals.t = (key) => {
+  res.locals.t = (key, params) => {
     const dict = translations[lang] || {};
-    if (Object.prototype.hasOwnProperty.call(dict, key)) return dict[key];
-    const fallback = translations.es || {};
-    if (Object.prototype.hasOwnProperty.call(fallback, key)) return fallback[key];
-    return key;
+    let str;
+    if (Object.prototype.hasOwnProperty.call(dict, key)) {
+      str = dict[key];
+    } else {
+      const fallback = translations.es || {};
+      str = Object.prototype.hasOwnProperty.call(fallback, key) ? fallback[key] : key;
+    }
+    if (params && typeof str === 'string') {
+      for (const [k, v] of Object.entries(params)) {
+        str = str.replaceAll(`{${k}}`, String(v));
+      }
+    }
+    return str;
   };
+  // Currency formatter exposed to all views.
+  res.locals.formatPrice = (amount, currency) => formatPrice(amount, currency, lang);
+  res.locals.formatPriceRange = (min, max, currency) =>
+    formatPriceRange(min, max, currency, lang);
   next();
 }
 

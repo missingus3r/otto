@@ -17,7 +17,9 @@
       </tr>
     </thead>
     <tbody>
-      <% listings.forEach(function(l) { var img = l.thumbPath || l.photoPath || ''; %>
+      <% listings.forEach(function(l) {
+           var img = (l.photos && l.photos.length) ? (l.photos[0].thumbPath || l.photos[0].path) : (l.thumbPath || l.photoPath || '');
+      %>
         <tr>
           <td>
             <% if (img) { %><img src="<%= img %>" alt="" style="width:32px;height:32px;object-fit:cover;border-radius:4px;vertical-align:middle;margin-right:6px;"><% } %>
@@ -25,7 +27,7 @@
           </td>
           <td><span class="pill <%= l.type %>"><%= t('listings.type.' + l.type) %></span></td>
           <td><span class="pill <%= l.status %>"><%= t('listings.status.' + l.status) %></span></td>
-          <td><%= l.priceMin %>–<%= l.priceMax %> <%= l.currency %></td>
+          <td><%= formatPriceRange(l.priceMin, l.priceMax, l.currency) %></td>
           <td style="font-size:0.85rem"><%= l.userId ? (l.userId.displayName || l.userId.email) : '—' %></td>
           <td style="font-size:0.8rem"><%= new Date(l.createdAt).toLocaleDateString() %></td>
         </tr>
@@ -33,5 +35,6 @@
     </tbody>
   </table>
 </div>
+<%- include('../partials/pager') %>
 
 <%- include('../partials/footer') %>

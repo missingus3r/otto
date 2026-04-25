@@ -5,12 +5,14 @@ import fs from 'fs';
 import crypto from 'crypto';
 import sharp from 'sharp';
 import sanitizeHtml from 'sanitize-html';
+import rateLimit from 'express-rate-limit';
 import { fileURLToPath } from 'url';
 
 import requireAuth from '../middleware/requireAuth.js';
-import Listing from '../models/Listing.js';
+import Listing, { CATEGORIES } from '../models/Listing.js';
 import Match from '../models/Match.js';
 import { runAutoFlag } from '../services/moderation.js';
+import { checkImage } from '../services/imageModeration.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -39,11 +41,18 @@ const upload = multer({
   },
 });
 
+// 10 listings created / hour / IP
+const createListingLimiter = rateLimit({
+  windowMs: 60 * 60 * 1000,
+  max: 10,
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+
 function clean(s) {
   return sanitizeHtml(String(s || ''), { allowedTags: [], allowedAttributes: {} }).trim();
 }
 
-// Fire-and-forget: 600x600 cover-fit webp thumbnail. Caller should NOT await.
 async function generateThumb(srcAbsPath, outAbsPath) {
   await sharp(srcAbsPath)
     .resize(600, 600, { fit: 'cover', position: 'centre' })
@@ -51,32 +60,120 @@ async function generateThumb(srcAbsPath, outAbsPath) {
     .toFile(outAbsPath);
 }
 
+// Process one uploaded file → return {path, thumbPath}, generating thumb async.
+function attachPhotoMeta(file) {
+  const photoPath = `/uploads/${file.filename}`;
+  const thumbName = `${path.parse(file.filename).name}.webp`;
+  const thumbWeb = `/uploads/thumbs/${thumbName}`;
+  const thumbAbs = path.join(thumbsDir, thumbName);
+  const srcPath = path.join(uploadsDir, file.filename);
+  // fire-and-forget thumbnail generation
+  generateThumb(srcPath, thumbAbs).catch((err) => console.error('[thumb]', err));
+  return { path: photoPath, thumbPath: thumbWeb, srcAbs: srcPath };
+}
+
+async function maybeNsfwCheck(srcAbs, listingId) {
+  try {
+    const r = await checkImage(srcAbs);
+    if (r.flagged) {
+      console.log(`[nsfw] flagged listing=${listingId} reason=${r.reason}`);
+      await Listing.updateOne(
+        { _id: listingId },
+        {
+          $set: {
+            flagged: true,
+            flaggedAt: new Date(),
+            flagReason: `auto: nsfw:${r.reason}`,
+          },
+        }
+      );
+    }
+  } catch (e) {
+    console.warn('[nsfw] check error:', e.message);
+  }
+}
+
+function safeUnlink(absPath) {
+  try {
+    if (absPath && fs.existsSync(absPath)) fs.unlinkSync(absPath);
+  } catch (e) {
+    console.warn('[gallery] unlink failed:', e.message);
+  }
+}
+
 const router = express.Router();
 router.use(requireAuth);
 
+// Index — list mine + explore (with optional search filters via query string).
 router.get('/', async (req, res, next) => {
   try {
+    const q = clean(req.query.q || '').slice(0, 80);
+    const type = ['sell', 'swap', 'buy'].includes(req.query.type) ? req.query.type : '';
+    const category = CATEGORIES.includes(req.query.category) ? req.query.category : '';
+    const city = clean(req.query.city || '').slice(0, 80);
+    const min = req.query.min !== undefined ? parseFloat(req.query.min) : NaN;
+    const max = req.query.max !== undefined ? parseFloat(req.query.max) : NaN;
+
     const mine = await Listing.find({ userId: req.user._id }).sort({ createdAt: -1 }).lean();
-    const explore = await Listing.find({
+
+    const exploreFilter = {
       status: 'open',
       userId: { $ne: req.user._id },
       moderationStatus: 'approved',
-    })
+    };
+    if (type) exploreFilter.type = type;
+    if (category) exploreFilter.category = category;
+    if (city) exploreFilter.city = new RegExp(city.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'i');
+    if (Number.isFinite(min) && min > 0) exploreFilter.priceMax = { $gte: min };
+    if (Number.isFinite(max) && max > 0) {
+      exploreFilter.priceMin = Object.assign({}, exploreFilter.priceMin || {}, { $lte: max });
+    }
+    if (q) exploreFilter.$text = { $search: q };
+
+    console.log(
+      `[search] q="${q}" type=${type} cat=${category} city=${city} min=${min} max=${max}`
+    );
+
+    const explore = await Listing.find(exploreFilter)
       .sort({ createdAt: -1 })
       .limit(50)
       .lean();
-    res.render('app/home', { mine, explore });
+
+    res.render('app/home', {
+      mine,
+      explore,
+      filters: { q, type, category, city, min: Number.isFinite(min) ? min : '', max: Number.isFinite(max) ? max : '' },
+      categories: CATEGORIES,
+    });
   } catch (err) {
     next(err);
   }
 });
 
 router.get('/new', (req, res) => {
-  res.render('app/new-listing', { error: null });
+  if (!req.user.emailVerified) {
+    return res.render('app/new-listing', {
+      error: null,
+      blocked: true,
+      categories: CATEGORIES,
+    });
+  }
+  res.render('app/new-listing', { error: null, blocked: false, categories: CATEGORIES });
 });
 
-router.post('/', upload.single('photo'), async (req, res, next) => {
+// CREATE — multiple photos (max 6). Block if email not verified.
+router.post('/', createListingLimiter, upload.array('photos', 6), async (req, res, next) => {
   try {
+    if (!req.user.emailVerified) {
+      // delete any uploaded files
+      for (const f of req.files || []) safeUnlink(path.join(uploadsDir, f.filename));
+      return res.status(403).render('app/new-listing', {
+        error: res.locals.t('verify.required'),
+        blocked: true,
+        categories: CATEGORIES,
+      });
+    }
+
     const title = clean(req.body.title);
     const description = clean(req.body.description);
     const type = ['sell', 'swap', 'buy'].includes(req.body.type) ? req.body.type : 'sell';
@@ -84,13 +181,24 @@ router.post('/', upload.single('photo'), async (req, res, next) => {
     const priceMax = Math.max(priceMin, parseFloat(req.body.priceMax) || priceMin);
     const currency = clean(req.body.currency).toUpperCase().slice(0, 6) || 'UYU';
     const swapForDescription = type === 'swap' ? clean(req.body.swapForDescription) : '';
-    const photoPath = req.file ? `/uploads/${req.file.filename}` : '';
+    const category = CATEGORIES.includes(req.body.category) ? req.body.category : 'otros';
+    const city = clean(req.body.city || '').slice(0, 80) || (req.user.city || '');
 
     if (!title) {
-      return res.status(400).render('app/new-listing', { error: 'Title required' });
+      for (const f of req.files || []) safeUnlink(path.join(uploadsDir, f.filename));
+      return res
+        .status(400)
+        .render('app/new-listing', { error: 'Title required', blocked: false, categories: CATEGORIES });
     }
 
-    // Auto-flag heuristics — runs synchronously, cheap.
+    // Photos
+    const files = (req.files || []).slice(0, 6);
+    const photoMetas = files.map((f, i) => {
+      const m = attachPhotoMeta(f);
+      return { path: m.path, thumbPath: m.thumbPath, order: i, srcAbs: m.srcAbs };
+    });
+
+    // Auto-flag heuristics
     const flag = runAutoFlag({ title, description, priceMin, priceMax });
     const moderationStatus = flag.flagged ? 'pending' : 'approved';
 
@@ -103,24 +211,20 @@ router.post('/', upload.single('photo'), async (req, res, next) => {
       priceMax,
       currency,
       swapForDescription,
-      photoPath,
+      category,
+      city,
+      photos: photoMetas.map((p) => ({ path: p.path, thumbPath: p.thumbPath, order: p.order })),
+      photoPath: photoMetas[0] ? photoMetas[0].path : '',
+      thumbPath: photoMetas[0] ? photoMetas[0].thumbPath : null,
       moderationStatus,
       flagged: flag.flagged,
       flagReason: flag.flagged ? `auto: ${flag.reason}` : '',
       flaggedAt: flag.flagged ? new Date() : undefined,
     });
 
-    // Fire-and-forget thumbnail generation. Must NOT block the response.
-    if (req.file) {
-      const srcPath = path.join(uploadsDir, req.file.filename);
-      const thumbName = `${path.parse(req.file.filename).name}.webp`;
-      const thumbAbs = path.join(thumbsDir, thumbName);
-      const thumbWeb = `/uploads/thumbs/${thumbName}`;
-      generateThumb(srcPath, thumbAbs)
-        .then(() =>
-          Listing.updateOne({ _id: listing._id }, { $set: { thumbPath: thumbWeb } })
-        )
-        .catch((err) => console.error('[thumb]', err));
+    // NSFW image moderation — fire and forget for the original of each photo.
+    for (const p of photoMetas) {
+      maybeNsfwCheck(p.srcAbs, listing._id);
     }
 
     res.redirect('/listings');
@@ -131,12 +235,13 @@ router.post('/', upload.single('photo'), async (req, res, next) => {
 
 router.get('/:id', async (req, res, next) => {
   try {
-    const listing = await Listing.findById(req.params.id).populate('userId', 'displayName email').lean();
+    const listing = await Listing.findById(req.params.id)
+      .populate('userId', 'displayName email city')
+      .lean();
     if (!listing) {
       return res.status(404).render('error', { status: 404, message: res.locals.t('error.notFound') });
     }
 
-    // Reputation of seller (best-effort).
     let sellerReputation = { avgRating: null, count: 0 };
     try {
       const User = (await import('../models/User.js')).default;
@@ -152,6 +257,113 @@ router.get('/:id', async (req, res, next) => {
       .sort({ createdAt: -1 })
       .lean();
     res.render('app/listing-detail', { listing, matches, sellerReputation });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// EDIT (owner only, status=open)
+router.get('/:id/edit', async (req, res, next) => {
+  try {
+    const listing = await Listing.findById(req.params.id);
+    if (!listing) return res.status(404).render('error', { status: 404, message: 'Not found' });
+    if (String(listing.userId) !== String(req.user._id)) {
+      return res.status(403).render('error', { status: 403, message: 'Forbidden' });
+    }
+    if (listing.status !== 'open') {
+      req.session.flash = { type: 'error', message: 'Only open listings can be edited' };
+      return res.redirect(`/listings/${listing._id}`);
+    }
+    res.render('app/edit-listing', {
+      listing: listing.toObject(),
+      error: null,
+      categories: CATEGORIES,
+    });
+  } catch (err) {
+    next(err);
+  }
+});
+
+router.post('/:id/edit', upload.array('photos', 6), async (req, res, next) => {
+  try {
+    const listing = await Listing.findById(req.params.id);
+    if (!listing) {
+      for (const f of req.files || []) safeUnlink(path.join(uploadsDir, f.filename));
+      return res.status(404).render('error', { status: 404, message: 'Not found' });
+    }
+    if (String(listing.userId) !== String(req.user._id)) {
+      for (const f of req.files || []) safeUnlink(path.join(uploadsDir, f.filename));
+      return res.status(403).render('error', { status: 403, message: 'Forbidden' });
+    }
+    if (listing.status !== 'open') {
+      for (const f of req.files || []) safeUnlink(path.join(uploadsDir, f.filename));
+      return res.status(400).render('error', { status: 400, message: 'Only open listings editable' });
+    }
+
+    const title = clean(req.body.title);
+    const description = clean(req.body.description);
+    const priceMin = Math.max(0, parseFloat(req.body.priceMin) || 0);
+    const priceMax = Math.max(priceMin, parseFloat(req.body.priceMax) || priceMin);
+    const currency = clean(req.body.currency).toUpperCase().slice(0, 6) || listing.currency;
+    const swapForDescription =
+      listing.type === 'swap' ? clean(req.body.swapForDescription) : listing.swapForDescription;
+    const category = CATEGORIES.includes(req.body.category) ? req.body.category : listing.category;
+    const city = clean(req.body.city || '').slice(0, 80) || listing.city;
+
+    if (!title) {
+      for (const f of req.files || []) safeUnlink(path.join(uploadsDir, f.filename));
+      return res.status(400).render('app/edit-listing', {
+        listing: listing.toObject(),
+        error: 'Title required',
+        categories: CATEGORIES,
+      });
+    }
+
+    listing.title = title;
+    listing.description = description;
+    listing.priceMin = priceMin;
+    listing.priceMax = priceMax;
+    listing.currency = currency;
+    listing.swapForDescription = swapForDescription;
+    listing.category = category;
+    listing.city = city;
+
+    // If new photos uploaded → replace all old ones.
+    const newFiles = req.files || [];
+    if (newFiles.length) {
+      // delete old photos from disk
+      const allOldPaths = [];
+      for (const p of listing.photos || []) {
+        allOldPaths.push(p.path);
+        if (p.thumbPath) allOldPaths.push(p.thumbPath);
+      }
+      if (listing.photoPath && !allOldPaths.includes(listing.photoPath)) allOldPaths.push(listing.photoPath);
+      if (listing.thumbPath && !allOldPaths.includes(listing.thumbPath)) allOldPaths.push(listing.thumbPath);
+      for (const webPath of allOldPaths) {
+        const abs = path.join(__dirname, '..', '..', 'public', webPath.replace(/^\//, ''));
+        safeUnlink(abs);
+      }
+      const photoMetas = newFiles.map((f, i) => {
+        const m = attachPhotoMeta(f);
+        return { path: m.path, thumbPath: m.thumbPath, order: i, srcAbs: m.srcAbs };
+      });
+      listing.photos = photoMetas.map((p) => ({ path: p.path, thumbPath: p.thumbPath, order: p.order }));
+      listing.photoPath = photoMetas[0].path;
+      listing.thumbPath = photoMetas[0].thumbPath;
+      for (const p of photoMetas) maybeNsfwCheck(p.srcAbs, listing._id);
+    }
+
+    // Re-run auto-flag heuristics on changed text/price
+    const flag = runAutoFlag({ title, description, priceMin, priceMax });
+    if (flag.flagged) {
+      listing.flagged = true;
+      listing.flaggedAt = new Date();
+      listing.flagReason = `auto: ${flag.reason}`;
+      listing.moderationStatus = 'pending';
+    }
+
+    await listing.save();
+    res.redirect(`/listings/${listing._id}`);
   } catch (err) {
     next(err);
   }
@@ -174,8 +386,6 @@ router.post('/:id/cancel', async (req, res, next) => {
   }
 });
 
-// User-side flag: any logged-in user can flag a listing they find suspicious.
-// Idempotent — flagging an already-flagged listing is a no-op.
 router.post('/:id/flag', async (req, res, next) => {
   try {
     const listing = await Listing.findById(req.params.id);
@@ -188,6 +398,28 @@ router.post('/:id/flag', async (req, res, next) => {
     listing.flaggedAt = new Date();
     listing.flagReason = `user:${String(req.user._id)}:${reason}`;
     await listing.save();
+    res.redirect(`/listings/${listing._id}`);
+  } catch (err) {
+    next(err);
+  }
+});
+
+// Moderation appeal (P3 #26).
+router.post('/:id/appeal', async (req, res, next) => {
+  try {
+    const listing = await Listing.findById(req.params.id);
+    if (!listing) return res.status(404).render('error', { status: 404, message: 'Not found' });
+    if (String(listing.userId) !== String(req.user._id)) {
+      return res.status(403).render('error', { status: 403, message: 'Forbidden' });
+    }
+    if (listing.moderationStatus !== 'rejected') {
+      return res.status(400).render('error', { status: 400, message: 'Only rejected listings can be appealed' });
+    }
+    listing.appealReason = clean(req.body.reason).slice(0, 500);
+    listing.appealAt = new Date();
+    await listing.save();
+    console.log(`[appeal] listing=${listing._id} reason="${listing.appealReason.slice(0, 60)}"`);
+    req.session.flash = { type: 'success', message: res.locals.t('listings.appealSent') };
     res.redirect(`/listings/${listing._id}`);
   } catch (err) {
     next(err);

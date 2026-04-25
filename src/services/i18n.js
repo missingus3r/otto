@@ -8,8 +8,10 @@ import { fileURLToPath } from 'url';
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const I18N_DIR = path.join(__dirname, '..', 'i18n');
 
+const SUPPORTED = ['es', 'pt', 'en', 'fr', 'it'];
+
 const dictionaries = {};
-for (const lang of ['es', 'pt', 'en']) {
+for (const lang of SUPPORTED) {
   try {
     const raw = fs.readFileSync(path.join(I18N_DIR, `${lang}.json`), 'utf8');
     dictionaries[lang] = JSON.parse(raw);

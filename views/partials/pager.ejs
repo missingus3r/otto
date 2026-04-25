@@ -1,0 +1,21 @@
+<%
+  var p = pager || {};
+  var page = p.page || 1;
+  var pages = p.pages || 1;
+  var base = p.base || '';
+  function withPage(n) {
+    var sep = base.indexOf('?') >= 0 ? '&' : '?';
+    return base + sep + 'page=' + n;
+  }
+%>
+<% if (pages > 1) { %>
+  <div class="pager" style="display:flex;gap:8px;justify-content:center;align-items:center;margin:20px 0;">
+    <% if (page > 1) { %>
+      <a class="btn ghost" href="<%= withPage(page - 1) %>">← <%= t('pager.prev') %></a>
+    <% } %>
+    <span class="muted"><%= t('pager.page') %> <%= page %> <%= t('pager.of') %> <%= pages %></span>
+    <% if (page < pages) { %>
+      <a class="btn ghost" href="<%= withPage(page + 1) %>"><%= t('pager.next') %> →</a>
+    <% } %>
+  </div>
+<% } %>

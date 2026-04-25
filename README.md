@@ -66,13 +66,54 @@ Every transaction (listing → match → accepted → completed) writes an immut
 
 ## Roadmap
 
+### v0.1 — skeleton
 - [x] Skeleton, models, auth, basic CRUD on listings
 - [x] Single-LLM agent with 5-min match cycle
-- [ ] Image uploads (multer + thumbnails)
-- [ ] Reputation / escrow (v0.2)
-- [ ] Push notifications (web push) on new match
-- [ ] Anti-spam + listing moderation queue
-- [ ] Public price baseline scraping (MercadoLibre / OLX) for the agent
+
+### v0.2 — done
+- [x] Image uploads (multer + thumbnails)
+- [x] Reputation (reviews per transaction, aggregate score)
+- [x] Push notifications (web push) on new match
+- [x] Anti-spam + listing moderation queue
+- [x] Public price baseline scraping (MercadoLibre / OLX) for the agent
+- [x] i18n (ES/PT/EN) + middleware
+- [x] Mark transaction complete (two-party confirm), cancel pending tx
+- [x] Edit listing (owner, while open)
+- [x] Password reset by email + email verification at registration
+- [x] Auto-expire matches + reopen orphan listings
+- [x] Direct chat between match parties (long-poll)
+- [x] CSRF tokens on every state-changing form
+- [x] Counter-offer on match
+- [x] Temporary ban (admin)
+- [x] Account deletion (GDPR-friendly, anonymize after grace period)
+- [x] Geolocation (city/country) + agent prefers same-city matches
+- [x] Manual search & filters (text, type, category, price, city)
+- [x] Multiple photos per listing (gallery, max 6)
+- [x] Structured categories (electronica/hogar/.../otros) — hard rule
+- [x] NSFW image moderation (OpenAI moderation API, fallback no-op)
+- [x] Pagination in admin tables
+- [x] Push notification preferences (granular per kind)
+- [x] PWA manifest + service worker (network-first cache)
+- [x] Cookie consent banner + Terms + Privacy pages
+- [x] Sitemap + robots.txt
+- [x] Rate limit on POST /listings
+- [x] Change password from profile / Change email with verification
+- [x] Moderation appeal flow
+- [x] More languages: FR + IT
+- [x] Currency formatting via Intl.NumberFormat
+- [x] Admin activity logs
+
+### v0.3 — candidates
+- [ ] Real escrow / payment integration (Mercado Pago, Stripe)
+- [ ] In-person meetup safety: shared location pin (one-time)
+- [ ] Saved searches → push when a new match shows up
+- [ ] Native iOS/Android wrappers
+- [ ] User-to-user blocking
+- [ ] Two-factor authentication (TOTP)
+- [ ] Webhooks for partner integrations
+- [ ] LLM-driven duplicate detection across listings
+- [ ] Per-listing analytics for owner (views, match attempts)
+- [ ] Per-category sub-attributes (size, year, condition)
 
 ## License
 

@@ -8,8 +8,10 @@ const ledgerSchema = new mongoose.Schema({
     enum: [
       'match_proposed',
       'match_accepted',
+      'match_counter',
       'transaction_completed',
       'transaction_cancelled',
+      'transaction_half_completed',
     ],
     required: true,
   },

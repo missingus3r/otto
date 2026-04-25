@@ -1,0 +1,24 @@
+<%- include('partials/header', { pageTitle: t('auth.resetTitle') }) %>
+<%- include('partials/flash') %>
+
+<div class="form-card">
+  <h1><%= t('auth.resetTitle') %></h1>
+  <% if (typeof error !== 'undefined' && error) { %>
+    <div class="error-msg"><%= error %></div>
+  <% } %>
+  <% if (valid) { %>
+    <form action="/auth/reset/<%= token %>" method="post">
+      <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+      <label for="password"><%= t('auth.newPassword') %></label>
+      <input id="password" type="password" name="password" required minlength="6" autocomplete="new-password">
+      <div class="spacer"></div>
+      <button class="btn block" type="submit"><%= t('auth.resetSubmit') %></button>
+    </form>
+  <% } else { %>
+    <div class="center muted">
+      <a href="/auth/forgot">← <%= t('auth.forgot') %></a>
+    </div>
+  <% } %>
+</div>
+
+<%- include('partials/footer') %>

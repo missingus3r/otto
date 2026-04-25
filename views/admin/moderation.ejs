@@ -4,6 +4,11 @@
 <a class="muted" href="/admin">← <%= t('common.back') %></a>
 <h1 class="section-title" style="margin-top:8px"><%= t('admin.moderation') %></h1>
 
+<div class="btn-row">
+  <a class="btn <%= tab === 'queue' ? '' : 'ghost' %>" href="/admin/moderation"><%= t('admin.moderation') %></a>
+  <a class="btn <%= tab === 'appeals' ? '' : 'ghost' %>" href="/admin/moderation?tab=appeals"><%= t('admin.moderation.appeals') %></a>
+</div>
+
 <% if (!listings || listings.length === 0) { %>
   <div class="card muted"><%= t('admin.moderation.empty') %></div>
 <% } else { %>
@@ -14,6 +19,8 @@
         <span>
           <% if (l.moderationStatus === 'pending') { %>
             <span class="pill cancelled"><%= t('moderation.pending') %></span>
+          <% } else if (l.moderationStatus === 'rejected') { %>
+            <span class="pill cancelled"><%= t('moderation.rejected') %></span>
           <% } %>
           <% if (l.flagged) { %>
             <span class="pill cancelled"><%= t('moderation.flagged') %></span>
@@ -22,7 +29,7 @@
       </div>
       <div class="muted" style="font-size:0.85rem;margin-top:4px;">
         <span class="pill <%= l.type %>"><%= t('listings.type.' + l.type) %></span>
-        · <%= l.priceMin %>–<%= l.priceMax %> <%= l.currency %>
+        · <%= formatPriceRange(l.priceMin, l.priceMax, l.currency) %>
         · <%= l.userId ? (l.userId.displayName || l.userId.email) : '—' %>
         · <%= new Date(l.createdAt).toLocaleString() %>
       </div>
@@ -34,17 +41,26 @@
           <strong><%= t('moderation.reason') %>:</strong> <%= l.flagReason %>
         </div>
       <% } %>
+      <% if (l.appealAt) { %>
+        <div class="rationale" style="margin-top:8px;">
+          <strong><%= t('listings.appeal') %> · <%= new Date(l.appealAt).toLocaleString() %>:</strong>
+          <%= l.appealReason || '—' %>
+        </div>
+      <% } %>
 
       <div class="btn-row" style="margin-top:10px;">
         <form action="/admin/listings/<%= l._id %>/approve" method="post" style="flex:1;">
+          <input type="hidden" name="_csrf" value="<%= csrfToken %>">
           <button class="btn block" type="submit"><%= t('admin.moderation.approve') %></button>
         </form>
         <form action="/admin/listings/<%= l._id %>/reject" method="post" style="flex:1;" data-confirm="<%= t('admin.moderation.reject') %>?">
+          <input type="hidden" name="_csrf" value="<%= csrfToken %>">
           <button class="btn danger block" type="submit"><%= t('admin.moderation.reject') %></button>
         </form>
       </div>
     </div>
   <% }); %>
+  <%- include('../partials/pager') %>
 <% } %>
 
 <%- include('../partials/footer') %>

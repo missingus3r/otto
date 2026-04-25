@@ -1,0 +1,42 @@
+<%- include('../partials/header', { pageTitle: t('messages.title') }) %>
+<%- include('../partials/nav', { activeNav: 'matches' }) %>
+<%- include('../partials/flash') %>
+
+<a class="muted" href="/matches">← <%= t('common.back') %></a>
+
+<div class="card">
+  <h2 style="margin:0;"><%= t('messages.title') %>
+    <span class="muted" style="font-size:0.85rem;font-weight:normal;">
+      · <%= other ? (other.displayName || other.email) : '—' %>
+    </span>
+  </h2>
+
+  <%
+    var myId = String(currentUser._id);
+    var nowISO = new Date().toISOString();
+  %>
+  <div data-chat data-match-id="<%= match._id %>" data-my-id="<%= myId %>" data-now="<%= nowISO %>">
+    <div class="chat-list" data-chat-list>
+      <% if (!messages || messages.length === 0) { %>
+        <div class="muted" style="padding:18px;text-align:center;"><%= t('messages.empty') %></div>
+      <% } else { %>
+        <% messages.forEach(function(m) {
+            var mine = String(m.fromUserId) === myId;
+        %>
+          <div class="chat-msg <%= mine ? 'mine' : 'theirs' %>">
+            <%= m.body %>
+            <span class="chat-msg-time"><%= new Date(m.createdAt).toLocaleTimeString() %></span>
+          </div>
+        <% }); %>
+      <% } %>
+    </div>
+
+    <form action="/messages/<%= match._id %>" method="post" class="chat-form">
+      <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+      <input type="text" name="body" maxlength="1000" required placeholder="<%= t('messages.placeholder') %>">
+      <button class="btn" type="submit"><%= t('messages.send') %></button>
+    </form>
+  </div>
+</div>
+
+<%- include('../partials/footer') %>

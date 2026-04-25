@@ -10,11 +10,23 @@
       <a href="/admin"><%= t('nav.admin') %></a>
     <% } %>
     <form action="/auth/logout" method="post" style="display:inline;margin:0;">
+      <input type="hidden" name="_csrf" value="<%= csrfToken %>">
       <button class="btn ghost" type="submit" style="padding:6px 12px;min-height:0;font-size:0.9rem;"><%= t('nav.logout') %></button>
     </form>
   </div>
   <button id="hamburger" class="hamburger" aria-label="menu">≡</button>
 </nav>
+
+<% if (currentUser && !currentUser.emailVerified) { %>
+<div class="flash" style="border-color: var(--blood); margin: 12px 0;">
+  <%= t('verify.banner', { email: currentUser.email }) %>
+  <form action="/auth/verify/resend" method="post" style="display:inline;margin-left:8px;">
+    <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+    <button class="btn ghost" type="submit" style="padding:4px 10px;min-height:0;font-size:0.8rem;"><%= t('verify.resend') %></button>
+  </form>
+</div>
+<% } %>
+
 <div id="mobileMenu" class="mobile-menu">
   <a href="/listings"><%= t('nav.listings') %></a>
   <a href="/listings/new"><%= t('nav.new') %></a>
@@ -24,7 +36,7 @@
     <a href="/admin"><%= t('nav.admin') %></a>
   <% } %>
   <a href="/how-it-works"><%= t('nav.howItWorks') %></a>
-  <form action="/auth/logout" method="post"><button type="submit"><%= t('nav.logout') %></button></form>
+  <form action="/auth/logout" method="post"><input type="hidden" name="_csrf" value="<%= csrfToken %>"><button type="submit"><%= t('nav.logout') %></button></form>
 </div>
 <nav class="bottomnav">
   <a href="/listings"<%= (typeof activeNav !== 'undefined' && activeNav === 'listings') ? ' class="active"' : '' %>><span>•</span><%= t('nav.listings') %></a>

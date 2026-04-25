@@ -7,7 +7,10 @@
   <a class="btn" href="/listings/new">+ <%= t('listings.new') %></a>
 </div>
 
-<% function imgFor(l) { return l.thumbPath || l.photoPath || ''; } %>
+<% function imgFor(l) {
+  if (l.photos && l.photos.length) return l.photos[0].thumbPath || l.photos[0].path || '';
+  return l.thumbPath || l.photoPath || '';
+} %>
 
 <% if (!mine || mine.length === 0) { %>
   <div class="card muted"><%= t('listings.empty') %></div>
@@ -26,8 +29,9 @@
             <span class="pill cancelled"><%= t('moderation.rejected') %></span>
           <% } %>
           <% if (l.type !== 'swap') { %>
-            <span><%= l.priceMin %>–<%= l.priceMax %> <%= l.currency %></span>
+            <span><%= formatPriceRange(l.priceMin, l.priceMax, l.currency) %></span>
           <% } %>
+          <% if (l.city) { %><span>· <%= l.city %></span><% } %>
         </div>
       </div>
     </a>
@@ -35,6 +39,37 @@
 <% } %>
 
 <h2 class="section-title"><%= t('listings.explore') %></h2>
+
+<form method="get" action="/listings" class="card" style="margin-bottom:14px;">
+  <div class="row" style="grid-template-columns: 2fr 1fr; gap:8px;">
+    <input type="search" name="q" value="<%= filters && filters.q || '' %>" placeholder="<%= t('listings.searchPlaceholder') %>">
+    <button class="btn" type="submit"><%= t('listings.search') %></button>
+  </div>
+  <div class="row" style="grid-template-columns: 1fr 1fr; gap:8px; margin-top:8px;">
+    <select name="type">
+      <option value=""><%= t('listings.allTypes') %></option>
+      <option value="sell"<%= (filters && filters.type === 'sell') ? ' selected' : '' %>><%= t('listings.type.sell') %></option>
+      <option value="swap"<%= (filters && filters.type === 'swap') ? ' selected' : '' %>><%= t('listings.type.swap') %></option>
+      <option value="buy"<%= (filters && filters.type === 'buy') ? ' selected' : '' %>><%= t('listings.type.buy') %></option>
+    </select>
+    <select name="category">
+      <option value=""><%= t('listings.allCategories') %></option>
+      <% (categories || []).forEach(function(c) { %>
+        <option value="<%= c %>"<%= (filters && filters.category === c) ? ' selected' : '' %>><%= t('category.' + c) %></option>
+      <% }); %>
+    </select>
+  </div>
+  <div class="row" style="grid-template-columns: 1fr 1fr 1fr; gap:8px; margin-top:8px;">
+    <input type="number" min="0" step="0.01" name="min" value="<%= filters && filters.min !== '' ? filters.min : '' %>" placeholder="<%= t('listings.priceMin') %>">
+    <input type="number" min="0" step="0.01" name="max" value="<%= filters && filters.max !== '' ? filters.max : '' %>" placeholder="<%= t('listings.priceMax') %>">
+    <input type="text" name="city" value="<%= filters && filters.city || '' %>" placeholder="<%= t('listings.city') %>">
+  </div>
+  <div class="btn-row" style="margin-top:8px;">
+    <button class="btn ghost" type="submit"><%= t('listings.applyFilters') %></button>
+    <a class="btn ghost" href="/listings"><%= t('listings.clearFilters') %></a>
+  </div>
+</form>
+
 <% if (!explore || explore.length === 0) { %>
   <div class="card muted"><%= t('listings.exploreEmpty') %></div>
 <% } else { %>
@@ -45,9 +80,11 @@
         <h4><%= l.title %></h4>
         <div class="meta">
           <span class="pill <%= l.type %>"><%= t('listings.type.' + l.type) %></span>
+          <% if (l.category) { %><span class="pill"><%= t('category.' + l.category) %></span><% } %>
           <% if (l.type !== 'swap') { %>
-            <span><%= l.priceMin %>–<%= l.priceMax %> <%= l.currency %></span>
+            <span><%= formatPriceRange(l.priceMin, l.priceMax, l.currency) %></span>
           <% } %>
+          <% if (l.city) { %><span>· <%= l.city %></span><% } %>
         </div>
       </div>
     </a>

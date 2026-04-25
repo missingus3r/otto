@@ -4,6 +4,9 @@ import sanitizeHtml from 'sanitize-html';
 import requireAuth from '../middleware/requireAuth.js';
 import Review from '../models/Review.js';
 import Transaction from '../models/Transaction.js';
+import User from '../models/User.js';
+import { notifyUser } from '../services/push.js';
+import { tForLang } from '../services/i18n.js';
 
 const router = express.Router();
 router.use(requireAuth);
@@ -94,6 +97,21 @@ router.post('/', async (req, res, next) => {
         rating,
         comment,
       });
+      try {
+        const target = await User.findById(toUserId).select('lang').lean();
+        const lang = (target && target.lang) || process.env.DEFAULT_LANG || 'es';
+        await notifyUser(
+          toUserId,
+          {
+            title: tForLang(lang, 'push.review.title'),
+            body: tForLang(lang, 'push.review.body'),
+            url: '/profile',
+          },
+          'reviews'
+        );
+      } catch (e) {
+        console.warn('[push] review notify failed:', e.message);
+      }
     } catch (err) {
       // duplicate (E11000) — user already left a review
       if (err && err.code === 11000) {

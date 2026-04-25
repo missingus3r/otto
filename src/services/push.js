@@ -3,10 +3,15 @@
 // Sends the same payload to ALL subscriptions a user owns, transparently
 // pruning stale endpoints (Apple/Google return 410 when the user uninstalls
 // or revokes the permission).
+//
+// notifyUser supports an optional `kind` ∈ ['matches','messages','reviews'] —
+// when provided, the user's pushPrefs[kind] must be true for the notification
+// to be delivered.
 
 import webpush from 'web-push';
 
 import PushSubscription from '../models/PushSubscription.js';
+import User from '../models/User.js';
 
 const VAPID_PUBLIC_KEY = process.env.VAPID_PUBLIC_KEY || '';
 const VAPID_PRIVATE_KEY = process.env.VAPID_PRIVATE_KEY || '';
@@ -32,7 +37,6 @@ export async function subscribe(userId, sub, ua = '') {
     throw new Error('subscribe: missing userId or subscription');
   }
   const keys = sub.keys || {};
-  // upsert on endpoint (unique). Same browser re-subscribing should not dupe.
   const doc = await PushSubscription.findOneAndUpdate(
     { endpoint: sub.endpoint },
     {
@@ -57,9 +61,23 @@ export async function unsubscribe(userId, endpoint) {
   return r.deletedCount || 0;
 }
 
-export async function notifyUser(userId, payload) {
+export async function notifyUser(userId, payload, kind = null) {
   if (!ensureConfigured()) return { sent: 0, errors: 0, removed: 0 };
   if (!userId) return { sent: 0, errors: 0, removed: 0 };
+
+  // Honour user push preferences when a kind is provided.
+  if (kind) {
+    try {
+      const u = await User.findById(userId).select('pushPrefs').lean();
+      const prefs = (u && u.pushPrefs) || {};
+      if (prefs[kind] === false) {
+        console.log(`[pushPrefs] user=${userId} kind=${kind} disabled — skip`);
+        return { sent: 0, errors: 0, removed: 0 };
+      }
+    } catch (e) {
+      console.warn('[pushPrefs] lookup failed:', e.message);
+    }
+  }
 
   const subs = await PushSubscription.find({ userId }).lean();
   if (!subs.length) return { sent: 0, errors: 0, removed: 0 };

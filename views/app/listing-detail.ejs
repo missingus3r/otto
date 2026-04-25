@@ -5,14 +5,26 @@
 <a class="muted" href="/listings">← <%= t('common.back') %></a>
 
 <%
-  var coverImg = listing.thumbPath || listing.photoPath || '';
+  var photos = (listing.photos && listing.photos.length) ? listing.photos : [];
+  if (!photos.length && (listing.thumbPath || listing.photoPath)) {
+    photos = [{ path: listing.photoPath, thumbPath: listing.thumbPath || listing.photoPath, order: 0 }];
+  }
+  var coverImg = photos.length ? (photos[0].thumbPath || photos[0].path) : '';
+  var coverFull = photos.length ? (photos[0].path || photos[0].thumbPath) : '';
   var ownerId = listing.userId && (listing.userId._id || listing.userId);
   var iAmOwner = currentUser && String(currentUser._id) === String(ownerId);
 %>
 
 <div class="card">
   <% if (coverImg) { %>
-    <img src="<%= coverImg %>" alt="<%= listing.title %>" style="border-radius:12px;margin-bottom:12px;max-height:320px;object-fit:cover;width:100%;">
+    <img data-gallery-main src="<%= coverFull %>" alt="<%= listing.title %>" style="border-radius:0;margin-bottom:12px;max-height:380px;object-fit:cover;width:100%;">
+    <% if (photos.length > 1) { %>
+      <div class="gallery-thumbs">
+        <% photos.forEach(function(p, i) { %>
+          <img data-gallery-thumb data-full="<%= p.path %>" src="<%= p.thumbPath || p.path %>" class="<%= i === 0 ? 'active' : '' %>" alt="">
+        <% }); %>
+      </div>
+    <% } %>
   <% } %>
   <div class="row between">
     <h1 style="margin:0;font-size:1.4rem;"><%= listing.title %></h1>
@@ -20,12 +32,14 @@
   </div>
   <div class="muted" style="margin-top:6px;">
     <span class="pill <%= listing.type %>"><%= t('listings.type.' + listing.type) %></span>
+    <% if (listing.category) { %><span class="pill"><%= t('category.' + listing.category) %></span><% } %>
     <% if (listing.type !== 'swap') { %>
-      · <%= listing.priceMin %>–<%= listing.priceMax %> <%= listing.currency %>
+      · <%= formatPriceRange(listing.priceMin, listing.priceMax, listing.currency) %>
     <% } %>
     <% if (listing.userId && listing.userId.displayName) { %>
       · <%= listing.userId.displayName %>
     <% } %>
+    <% if (listing.city) { %> · <%= listing.city %><% } %>
     <% if (typeof sellerReputation !== 'undefined' && sellerReputation && sellerReputation.count > 0) { %>
       · <span class="pill" title="<%= sellerReputation.count %> <%= t('review.left') %>">★ <%= sellerReputation.avgRating.toFixed(1) %> (<%= sellerReputation.count %>)</span>
     <% } %>
@@ -34,6 +48,10 @@
   <% if (listing.moderationStatus === 'pending') { %>
     <div class="rationale" style="margin-top:10px;">
       <strong><%= t('moderation.pending') %>.</strong>
+    </div>
+  <% } else if (listing.moderationStatus === 'rejected') { %>
+    <div class="rationale" style="margin-top:10px;">
+      <strong><%= t('moderation.rejected') %>.</strong>
     </div>
   <% } %>
 
@@ -46,14 +64,37 @@
     </div>
   <% } %>
 
-  <% if (iAmOwner && (listing.status === 'open' || listing.status === 'matched')) { %>
+  <% if (iAmOwner && listing.status === 'open') { %>
+    <div class="btn-row" style="margin-top:12px;">
+      <a class="btn ghost" href="/listings/<%= listing._id %>/edit"><%= t('listings.editBtn') %></a>
+      <form action="/listings/<%= listing._id %>/cancel" method="post" data-confirm="<%= t('listings.cancel') %>?" style="display:inline;">
+        <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+        <button class="btn danger" type="submit"><%= t('listings.cancel') %></button>
+      </form>
+    </div>
+  <% } else if (iAmOwner && listing.status === 'matched') { %>
     <form action="/listings/<%= listing._id %>/cancel" method="post" data-confirm="<%= t('listings.cancel') %>?" style="margin-top:12px;">
+      <input type="hidden" name="_csrf" value="<%= csrfToken %>">
       <button class="btn danger" type="submit"><%= t('listings.cancel') %></button>
     </form>
   <% } %>
 
+  <% if (iAmOwner && listing.moderationStatus === 'rejected' && !listing.appealAt) { %>
+    <form action="/listings/<%= listing._id %>/appeal" method="post" style="margin-top:12px;">
+      <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+      <label for="appealReason"><%= t('listings.appealReason') %></label>
+      <textarea id="appealReason" name="reason" maxlength="500"></textarea>
+      <button class="btn" type="submit"><%= t('listings.appealSubmit') %></button>
+    </form>
+  <% } else if (iAmOwner && listing.appealAt) { %>
+    <div class="muted" style="margin-top:10px;font-size:0.85rem;">
+      <%= t('listings.appealSent') %>
+    </div>
+  <% } %>
+
   <% if (currentUser && !iAmOwner && !listing.flagged) { %>
     <form action="/listings/<%= listing._id %>/flag" method="post" data-confirm="<%= t('moderation.flag-confirm') %>" style="margin-top:12px;">
+      <input type="hidden" name="_csrf" value="<%= csrfToken %>">
       <input type="text" name="reason" placeholder="<%= t('moderation.flag-reason') %>" maxlength="200" style="margin-bottom:6px;">
       <button class="btn ghost" type="submit"><%= t('moderation.flag') %></button>
     </form>
@@ -76,7 +117,7 @@
       </div>
       <div class="rationale">"<%= m.agentRationale %>"</div>
       <div class="muted">
-        <%= t('matches.proposedPrice') %>: <strong><%= m.proposedPrice %> <%= m.currency %></strong>
+        <%= t('matches.proposedPrice') %>: <strong><%= formatPrice(m.proposedPrice, m.currency) %></strong>
       </div>
     </div>
   <% }); %>

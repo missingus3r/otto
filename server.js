@@ -12,12 +12,15 @@ import bcrypt from 'bcryptjs';
 import { connectDB } from './src/config/db.js';
 import User from './src/models/User.js';
 import { i18nMiddleware } from './src/middleware/i18n.js';
-import { startAgentCron } from './src/services/agent.js';
+import { csrfMiddleware } from './src/middleware/csrf.js';
+import { startAgentCron, startAccountDeletionCron } from './src/services/agent.js';
+import { ensureIcons } from './src/scripts/generateIcons.js';
 
 import landingRoutes from './src/routes/landing.js';
 import authRoutes from './src/routes/auth.js';
 import listingsRoutes from './src/routes/listings.js';
 import matchesRoutes from './src/routes/matches.js';
+import messagesRoutes from './src/routes/messages.js';
 import profileRoutes from './src/routes/profile.js';
 import adminRoutes from './src/routes/admin.js';
 import reviewsRoutes from './src/routes/reviews.js';
@@ -45,6 +48,7 @@ async function bootstrapAdmin() {
     displayName: 'Admin',
     role: 'admin',
     lang: process.env.DEFAULT_LANG || 'es',
+    emailVerified: true,
   });
   console.log('[bootstrap] admin user created:', admin.email);
 }
@@ -54,11 +58,20 @@ async function start() {
     await connectDB();
     await bootstrapAdmin();
 
+    // PWA icons (idempotent — generates on first boot)
+    try {
+      await ensureIcons();
+    } catch (e) {
+      console.warn('[pwa] icon generation skipped:', e.message);
+    }
+
     if (process.env.AGENT_ENABLED === 'true') {
       startAgentCron();
     } else {
       console.log('[agent] disabled by env (AGENT_ENABLED != true)');
     }
+    // Account deletion cron always runs (daily, low cost).
+    startAccountDeletionCron();
 
     const app = express();
 
@@ -72,10 +85,6 @@ async function start() {
       fs.mkdirSync(thumbsDir, { recursive: true });
     }
 
-    // security middleware — relaxed CSP so inline EJS scripts work without CDN.
-    // upgradeInsecureRequests + HSTS disabled because we serve over plain HTTP
-    // in dev/LAN; otherwise the browser upgrades /css/main.css to https://
-    // and the connection refuses, leaving the page unstyled.
     const isProd = process.env.NODE_ENV === 'production';
     app.use(
       helmet({
@@ -103,7 +112,6 @@ async function start() {
     app.use(express.json({ limit: '1mb' }));
     app.use(express.urlencoded({ extended: true, limit: '1mb' }));
 
-    // sessions backed by mongo
     app.use(
       session({
         secret: process.env.SESSION_SECRET || 'otto-dev-secret',
@@ -130,8 +138,11 @@ async function start() {
     // static
     app.use(express.static(path.join(__dirname, 'public')));
 
-    // i18n
+    // i18n (must go before CSRF so res.locals.t is set, and before route handlers)
     app.use(i18nMiddleware);
+
+    // CSRF (after session — needs req.session)
+    app.use(csrfMiddleware);
 
     // make session info available to views
     app.use((req, res, next) => {
@@ -145,6 +156,7 @@ async function start() {
     app.use('/auth', authRoutes);
     app.use('/listings', listingsRoutes);
     app.use('/matches', matchesRoutes);
+    app.use('/messages', messagesRoutes);
     app.use('/profile', profileRoutes);
     app.use('/admin', adminRoutes);
     app.use('/reviews', reviewsRoutes);

@@ -37,10 +37,12 @@
     <div>
       <% if (agentPaused) { %>
         <form action="/admin/agent/resume" method="post" style="display:inline;">
+          <input type="hidden" name="_csrf" value="<%= csrfToken %>">
           <button class="btn" type="submit"><%= t('admin.agent.resume') %></button>
         </form>
       <% } else { %>
         <form action="/admin/agent/pause" method="post" style="display:inline;">
+          <input type="hidden" name="_csrf" value="<%= csrfToken %>">
           <button class="btn ghost" type="submit"><%= t('admin.agent.pause') %></button>
         </form>
       <% } %>
@@ -78,6 +80,7 @@
     <a class="btn ghost" href="/admin/ledger"><%= t('admin.ledger') %></a>
     <a class="btn ghost" href="/admin/agent-log"><%= t('admin.agentLog') %></a>
     <a class="btn ghost" href="/admin/moderation"><%= t('admin.moderation') %></a>
+    <a class="btn ghost" href="/admin/actions"><%= t('admin.actions') %></a>
   </div>
 </div>
 
