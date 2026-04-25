@@ -1,14 +1,118 @@
 # otto — frontend / app pages reference
 
-Documentación funcional de las páginas que ve el usuario logueado: campos de cada form, qué hace cada acción, qué valida, qué errores devuelve, y cómo navega.
+Documentación funcional de las páginas que ve el usuario: campos de cada form, qué hace cada acción, qué valida, qué errores devuelve, y cómo navega.
 
-> Las rutas viven en `src/routes/*.js` y los templates en `views/app/*.ejs` (usuario) y `views/admin/*.ejs` (admin). Este doc cubre el lado usuario (admin tiene su propio reference más adelante).
+> Las rutas viven en `src/routes/*.js` y los templates en `views/*.ejs` y `views/app/*.ejs`. Admin tiene su propio reference más adelante.
 
 ---
 
-## Auth requerida en todas
+## Páginas públicas (sin auth)
 
-Todas estas páginas pasan por el middleware `requireAuth`:
+### `/auth/register` — Crear cuenta
+
+#### GET
+- Si ya hay sesión activa (`req.session.userId`) → redirige a `/listings`. No tiene sentido registrar dos veces.
+- Si no, renderiza `views/register.ejs` con `error: null`.
+
+#### Vista (`views/register.ejs`)
+Card centrada con:
+- Heading: `auth.registerTitle` (i18n)
+- Si hay error de un POST previo, muestra `<div class="error-msg">` arriba del form
+- Form `POST /auth/register`:
+
+| Campo | Tipo | Validación cliente | Validación server | Notas |
+|---|---|---|---|---|
+| `displayName` | text | optional | sanitize-html → max sin límite explícito | Si vacío, usa la parte antes del `@` del email |
+| `email` | email | required, browser HTML5 valida formato | required, lowercased, sanitize-html | Unique en DB |
+| `password` | password | required, minlength=6 | required, length ≥ 6 | bcrypt hash 10 rounds |
+
+- Footer link: "¿Ya tenés cuenta? Iniciar sesión" → `/auth/login`
+
+#### POST `/auth/register`
+- **Rate limit**: 30 reqs / 15 min por IP (`express-rate-limit` `authLimiter`)
+- Sanitiza email + displayName
+- Valida: `email && password && password.length >= 6` → si falla: 400 + re-render `register` con mensaje hardcoded "Email/password required (password 6+ chars)."
+- Chequea email único: `User.findOne({email})` → si existe: 400 + re-render con `t('auth.exists')`
+- Crea User: `passwordHash = await bcrypt.hash(password, 10)`, role `'user'`, lang del request actual (i18n resuelto), `lastLoginAt: now`
+- Setea `req.session.userId = user._id` (login automático tras registro)
+- Setea `req.session.flash = { type: 'success', message: t('auth.welcome') }` → la próxima vista renderiza el flash
+- Redirect → `/listings`
+
+#### Errores posibles
+- Rate limit excedido → 429 (helmet/rate-limit responde con headers `X-RateLimit-*`)
+- Email duplicado → 400 con mensaje
+- Password corta → 400 con mensaje
+- DB falla → `next(err)` → `views/error.ejs` 500
+
+---
+
+### `/auth/login` — Iniciar sesión
+
+#### GET
+- Si ya hay sesión → redirige a `/listings`
+- Renderiza `views/login.ejs` con `error: null`
+
+#### Vista (`views/login.ejs`)
+Card centrada con:
+- Heading: `auth.loginTitle`
+- Form `POST /auth/login`:
+
+| Campo | Tipo | Validación | Notas |
+|---|---|---|---|
+| `email` | email | required, autocomplete=email | sanitize + lowercase |
+| `password` | password | required, autocomplete=current-password | comparado con bcrypt.compare |
+
+- Footer link: "¿No tenés cuenta? Crear cuenta" → `/auth/register`
+
+#### POST `/auth/login`
+- **Mismo rate limit** que register: 30 reqs / 15 min
+- Sanitiza email
+- `User.findOne({email})` → si no existe O `user.banned === true` → 400 + re-render con `t('auth.invalid')` (mismo mensaje genérico para no revelar si el email existe — mitiga enumeración)
+- `user.comparePassword(password)` (bcrypt) → si falla: mismo 400 + `t('auth.invalid')`
+- Update `lastLoginAt`
+- Setea `req.session.userId` + flash welcome
+- **Redirect según rol**:
+  - `role === 'admin'` → `/admin`
+  - resto → `/listings`
+
+#### Errores posibles
+- Credenciales inválidas (cualquier razón) → 400 con mensaje genérico
+- User banned → mismo 400 (no diferencia)
+- DB falla → `next(err)`
+
+---
+
+### `POST /auth/logout`
+- Solo POST (no GET, mitiga CSRF accidental por link)
+- `req.session.destroy()` → cookie de session sigue, pero el server ya no la reconoce
+- Redirect → `/`
+
+---
+
+### `/how-it-works` — Explicador
+
+#### GET (sin auth required)
+- Sirve la misma página tanto a logueados como anónimos.
+- Renderiza `views/app/how-it-works.ejs`.
+
+#### Vista (`views/app/how-it-works.ejs`)
+Layout simple, una columna:
+- Si hay `currentUser`, incluye el `partials/nav` arriba (top nav de app). Si no hay user, no se muestra el nav.
+- Link "← back" → si hay user, vuelve a `/listings`; si no, vuelve a `/` (landing pública).
+- 3 cards con i18n keys `landing.feature1/2/3.title` + `.body`:
+  1. **Publicás con un rango** (cero búsquedas)
+  2. **El agente recorre el mercado** + nota sobre Project Deal de Anthropic ("una sola IA igual para todos")
+  3. **Vos aceptás o rechazás**
+- Sección "Ledger": card explicando que cada propuesta y cierre se escribe en un ledger inmutable visible solo al admin (auditoría).
+
+#### Errores
+- Ninguno propio. Si falla render → error handler global.
+
+---
+
+## Páginas con auth requerida
+
+Todas las siguientes pasan por el middleware `requireAuth`:
 - Si no hay `req.session.userId` → redirige a `/auth/login` con flash.
 - Si la sesión existe pero el user no se encuentra (banned/borrado) → cierra sesión y redirige.
 
